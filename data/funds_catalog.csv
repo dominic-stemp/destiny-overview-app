@@ -1,0 +1,13 @@
+code	name	lifestage_eligible	asset_admin	asset_manager	total
+MEP	Destiny Market Enhanced Portfolio	18	0.863%	0.460%	1.32%
+MOD	Destiny Moderate Portfolio	50	0.863%	0.440%	1.30%
+CON	Destiny Conservative Portfolio	57	0.863%	0.420%	1.28%
+DEF	Destiny Defensive Portfolio	62	0.863%	0.380%	1.24%
+GLO	Destiny Global Enhanced Portfolio	-	0.863%	0.570%	1.43%
+MNY	Destiny Money Market Portfolio	-	0.863%	0.230%	1.09%
+PME	Destiny Passive Market Enhanced Portfolio	18	0.575%	0.220%	0.80%
+PMO	Destiny Passive Moderate Portfolio	50	0.575%	0.220%	0.80%
+PCO	Destiny Passive Conservative Portfolio	57	0.575%	0.210%	0.79%
+PDE	Destiny Passive Defensive Portfolio	62	0.575%	0.210%	0.79%
+SAT	Satrix Enhanced Balanced Tracker Fund	-	0.575%	0.400%	0.98%
+					

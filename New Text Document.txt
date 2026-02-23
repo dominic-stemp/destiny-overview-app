@@ -1,0 +1,3 @@
+cd "C:\Users\dominic.stemp\PYTHON PROJECTS\destiny_overview_app"
+
+.\.venv\Scripts\Activate.ps1
