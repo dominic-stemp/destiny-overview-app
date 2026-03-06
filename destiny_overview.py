@@ -12,6 +12,11 @@ from pdf_generator_pres import generate_pres_pdf
 from eac_calculator import compute_eac_table, eac_table_to_rows, TIC_MAP
 
 # ----------------------------------------------------
+# CONSTANTS
+# ----------------------------------------------------
+VAT = 15.0  # hardcoded VAT rate
+
+# ----------------------------------------------------
 # UPFRONT FEE BRACKETS
 # ----------------------------------------------------
 FEE_BRACKETS_OPTION_1 = [
@@ -23,8 +28,10 @@ FEE_BRACKETS_OPTION_1 = [
     {"min": 5000000.01, "max": float("inf"), "rate": 0.0},
 ]
 
+UPFRONT_FEE_CAP = 7500.0  # Option 1 fee capped at R7,500 incl VAT
+
 def calculate_upfront_fee(lump_sum, pres_option, vat_pct):
-    """Tiered (progressive/marginal) upfront fee across band slices."""
+    """Tiered (progressive/marginal) upfront fee across band slices, capped at R7,500."""
     if pres_option != 1:
         return 0.0, 0.0, 0.0
     remaining = lump_sum
@@ -37,14 +44,16 @@ def calculate_upfront_fee(lump_sum, pres_option, vat_pct):
         total_no_vat += slice_amt * (b["rate"] / 100)
         remaining -= slice_amt
     fee_vat = total_no_vat * (1 + vat_pct / 100)
-    # effective rate for display (as % of total lump sum)
+    # Cap at R7,500 incl VAT
+    if fee_vat > UPFRONT_FEE_CAP:
+        fee_vat = UPFRONT_FEE_CAP
+        total_no_vat = fee_vat / (1 + vat_pct / 100)
     effective_rate = (total_no_vat / lump_sum * 100) if lump_sum > 0 else 0.0
     return fee_vat, total_no_vat, effective_rate
 
 
 # ----------------------------------------------------
-# INVESTMENT MANAGEMENT FEE (weighted TIC) — kept for
-# the fund allocation table display on the input page
+# INVESTMENT MANAGEMENT FEE (weighted TIC)
 # ----------------------------------------------------
 def investment_mgmt_from_alloc(df, lump_sum):
     df = df.copy()
@@ -145,7 +154,6 @@ st.image(logo, width=360)
 st.markdown("<div class='section-heading'>Personal Information</div>", unsafe_allow_html=True)
 
 today = date.today()
-st.date_input("Today's Date", value=today, key="todays_date")
 
 dob = st.date_input(
     "Investor Date of Birth",
@@ -155,7 +163,8 @@ dob = st.date_input(
 )
 
 investor_age = (today - dob).days / 365.25
-st.write(f"**Investor Age:** {investor_age:.1f} years")
+investor_age_display = int(investor_age)  # floor to completed years
+st.write(f"**Investor Age:** {investor_age_display} years")
 
 investor_name  = st.text_input("Investor Name",  key="inv_name_input")
 investor_email = st.text_input("Investor Email", key="inv_email_input")
@@ -165,8 +174,23 @@ investor_email = st.text_input("Investor Email", key="inv_email_input")
 # ----------------------------------------------------
 st.markdown("<div class='section-heading'>Investment Details</div>", unsafe_allow_html=True)
 
-fund             = st.selectbox("Fund", ["Retirement Annuity", "Preservation"], key="fund_select")
-pres_fee_option  = st.selectbox("Pres Fee Option", [1, 2, 3], key="pres_fee")
+fund = st.selectbox("Product Type", ["Retirement Annuity", "Preservation"], key="fund_select")
+
+# Pres fee option — only shown for Preservation
+if fund == "Preservation":
+    pres_fee_option_str = st.selectbox(
+        "Fee Option",
+        [
+            "Option 1 – Upfront Fee",
+            "Option 2 – Cancellation Fee",
+            "Option 3 – Section 14 (No Fees)",
+        ],
+        key="pres_fee",
+    )
+    pres_fee_option = int(pres_fee_option_str[7])  # extract digit: "Option 1..." -> 1
+else:
+    pres_fee_option = 3  # RA: no fee options
+
 estimated_lump_sum = st.number_input(
     "Estimated Lump Sum (R)", min_value=0.0, step=1000.0, format="%.2f", key="lump_sum"
 )
@@ -180,41 +204,47 @@ if fund == "Retirement Annuity":
         st.error("Minimum lump sum for a Retirement Annuity is R 20,000.00")
     if monthly_contribution > 0 and monthly_contribution < 500:
         st.error("Minimum monthly contribution for a Retirement Annuity is R 500.00")
+
 ifa_fee       = st.selectbox("IFA Fee (ex VAT)", ["0%", "0.25%", "0.35%", "0.5%", "0.75%"])
 ifa_fee_value = float(ifa_fee.replace("%", ""))
-vat           = st.number_input("VAT (%)", value=15.0, step=0.1, key="vat_input")
+
 investment_option = st.selectbox(
-    "Investment Option", ["Lifestage", "Passive Lifestage", "Choice"]
+    "Investment Option", ["Lifestage", "Passive Lifestage", "Own Choice"]
 )
 
 # ----------------------------------------------------
-# UPFRONT FEE CALC + DISPLAY
+# UPFRONT FEE CALC + DISPLAY (Preservation only)
 # ----------------------------------------------------
 upfront_fee_vat, upfront_fee_no_vat, upfront_rate_display = calculate_upfront_fee(
-    estimated_lump_sum, pres_fee_option, vat
+    estimated_lump_sum, pres_fee_option, VAT
 )
 net_lump_sum = estimated_lump_sum - upfront_fee_vat
 
-if pres_fee_option == 1:
-    st.markdown("<div class='section-heading'>Upfront Fee (Option 1)</div>", unsafe_allow_html=True)
-    st.write(f"**Upfront Rate:** {upfront_rate_display:.3f}%")
-    st.write(f"**Upfront Fee (Incl VAT):** R {upfront_fee_vat:,.2f}")
-    st.write(f"**Net Amount Invested:** R {net_lump_sum:,.2f}")
-elif pres_fee_option == 2:
-    st.markdown("<div class='section-heading'>Option 2 – Waived Initial Fee</div>", unsafe_allow_html=True)
-    st.write(
-        "No initial fee is charged. However, if you withdraw funds before age 55, "
-        "a withdrawal fee applies based on your period of membership:"
-    )
-    opt2_data = {
-        "Period of Membership": ["One year or less", "One to Three years", "Three to Five years", "Five years or more"],
-        "Withdrawal Fee": ["2.75% plus VAT", "1.75% plus VAT", "0.75% plus VAT", "0%"],
-    }
-    st.table(pd.DataFrame(opt2_data))
-    st.write(f"**Net Amount Invested:** R {net_lump_sum:,.2f}")
+if fund == "Preservation":
+    if pres_fee_option == 1:
+        st.markdown("<div class='section-heading'>Option 1 – Upfront Fee</div>", unsafe_allow_html=True)
+        st.write(f"**Upfront Rate:** {upfront_rate_display:.3f}%")
+        st.write(f"**Upfront Fee (Incl VAT):** R {upfront_fee_vat:,.2f}")
+        st.write(f"**Net Amount Invested:** R {net_lump_sum:,.2f}")
+    elif pres_fee_option == 2:
+        st.markdown("<div class='section-heading'>Option 2 – Cancellation Fee</div>", unsafe_allow_html=True)
+        st.write(
+            "No initial fee is charged. However, if you withdraw funds, "
+            "a cancellation fee applies based on your period of membership:"
+        )
+        opt2_data = {
+            "Period of Membership": ["One year or less", "One to Three years", "Three to Five years", "Five years or more"],
+            "Cancellation Fee": ["2.75% plus VAT", "1.75% plus VAT", "0.75% plus VAT", "0%"],
+        }
+        st.table(pd.DataFrame(opt2_data))
+        st.write(f"**Net Amount Invested:** R {estimated_lump_sum:,.2f}")
+    elif pres_fee_option == 3:
+        st.markdown("<div class='section-heading'>Option 3 – Section 14 (No Fees)</div>", unsafe_allow_html=True)
+        st.write("No upfront or cancellation fees apply.")
+        st.write(f"**Net Amount Invested:** R {estimated_lump_sum:,.2f}")
 
 # ----------------------------------------------------
-# LIFESTAGE / CHOICE PORTFOLIO
+# LIFESTAGE / OWN CHOICE PORTFOLIO
 # ----------------------------------------------------
 ls_name = None
 ls_tic  = None
@@ -228,7 +258,7 @@ if investment_option in ["Lifestage", "Passive Lifestage"]:
     st.write(f"**Selected Portfolio:** {ls_name}")
     st.write(f"**TIC:** {ls_tic:.2f}%")
 
-if investment_option == "Choice":
+if investment_option == "Own Choice":
     allocations = []
     st.markdown("### Enter Allocations")
 
@@ -253,7 +283,7 @@ if investment_option == "Choice":
     alloc_df = pd.DataFrame(allocations)
     imc = investment_mgmt_from_alloc(alloc_df, estimated_lump_sum)
     st.write(f"**Investment Management Fee (%):** {imc:.4f}%")
-    st.dataframe(alloc_df)
+    st.dataframe(alloc_df.set_index("Portfolio"), hide_index=False)
 
 # ----------------------------------------------------
 # EAC — build via shared calculator
@@ -261,7 +291,7 @@ if investment_option == "Choice":
 is_ra = fund == "Retirement Annuity"
 
 # Build choice_allocations list for compute_eac_table
-if investment_option == "Choice" and alloc_df is not None:
+if investment_option == "Own Choice" and alloc_df is not None:
     choice_allocs = [
         (row["Portfolio"], row["Lump Sum %"])
         for _, row in alloc_df.iterrows()
@@ -269,20 +299,40 @@ if investment_option == "Choice" and alloc_df is not None:
 else:
     choice_allocs = None
 
+# Determine EAC fee parameters based on fund type and pres option
+if is_ra:
+    eac_upfront_fee = 0.0
+    eac_cancel_fee = 0.0
+    include_upfront = False
+elif pres_fee_option == 1:
+    eac_upfront_fee = upfront_fee_vat
+    eac_cancel_fee = 0.0
+    include_upfront = True
+elif pres_fee_option == 2:
+    # Cancellation fee worst-case (2.75% + VAT) shown in Other row as RIY
+    eac_upfront_fee = 0.0
+    eac_cancel_fee = estimated_lump_sum * 0.0275 * (1 + VAT / 100)
+    include_upfront = False
+else:  # Option 3
+    eac_upfront_fee = 0.0
+    eac_cancel_fee = 0.0
+    include_upfront = False
+
 eac = compute_eac_table(
-    fund_type           = "RA" if is_ra else "Preservation",
-    age                 = investor_age,
-    investment_option   = investment_option,
-    selected_portfolio  = ls_name,
-    choice_allocations  = choice_allocs,
-    ifa_fee_ex_vat      = ifa_fee_value,        # already a % (e.g. 0.75)
-    vat_rate            = vat,                  # e.g. 15.0
-    admin_base_ex_vat   = 0.75,
-    tic_map             = TIC_MAP,
-    include_upfront_in_eac = True,
-    upfront_fee_incl_vat   = upfront_fee_vat,
-    lump_sum               = estimated_lump_sum,
-    monthly_contribution   = monthly_contribution,
+    fund_type                 = "RA" if is_ra else "Preservation",
+    age                       = investor_age,
+    investment_option         = investment_option,
+    selected_portfolio        = ls_name,
+    choice_allocations        = choice_allocs,
+    ifa_fee_ex_vat            = ifa_fee_value,
+    vat_rate                  = VAT,
+    admin_base_ex_vat         = 0.75,
+    tic_map                   = TIC_MAP,
+    include_upfront_in_eac    = include_upfront,
+    upfront_fee_incl_vat      = eac_upfront_fee,
+    cancellation_fee_incl_vat = eac_cancel_fee,
+    lump_sum                  = estimated_lump_sum,
+    monthly_contribution      = monthly_contribution,
 )
 
 # Convert to PDF-compatible row dicts
@@ -295,6 +345,10 @@ st.markdown("<div class='section-heading'>Effective Annual Cost (EAC)</div>", un
 
 eac_display_rows = []
 for r in eac["rows"]:
+    # Hide Other row if all values are zero/N/A
+    if r["name"] == "Other":
+        if all(v in ("0.00%", "N/A") for v in r["values"]):
+            continue
     row_dict = {"": r["name"]}
     for col, val in zip(eac["columns"], r["values"]):
         row_dict[col] = val
@@ -305,11 +359,6 @@ st.dataframe(
     hide_index=True,
     use_container_width=True,
 )
-
-if eac.get("_upfront_in_eac"):
-    st.caption(
-        "EAC includes the amortised effect of the upfront fee spread across each disclosure period."
-    )
 
 # ----------------------------------------------------
 # GENERATE PDF BUTTON
@@ -330,21 +379,16 @@ if st.button("Generate Investment Report (PDF)"):
         field_values = {
             "InvestorName":        investor_name,
             "DateOfBirth":         dob.strftime("%d %B %Y"),
-            "InvestorAge":         f"{investor_age:.1f} years",
+            "InvestorAge":         f"{investor_age_display} years",
             "InvestorEmail":       investor_email,
             "QuotationDate":       today.strftime("%d %B %Y"),
             "InitialLumpSum":      f"R {estimated_lump_sum:,.2f}",
-            "InitialFeeVAT":       f"R {upfront_fee_vat:,.2f}",
-            "NetLumpSum":          f"R {net_lump_sum:,.2f}",
             "MonthlyContribution": f"R {monthly_contribution:,.2f}",
             "InvestmentOption":    investment_option,
             "LifestagePortfolio":  ls_name or "",
             "LifestageTIC":        f"{ls_tic:.2f}%" if ls_tic else "",
             "LifestageTICValue":   ls_tic or 0.0,
             "LumpSumRaw":          estimated_lump_sum,
-            "PresOption":          pres_fee_option,
-            "UpfrontFeeVATRaw":    upfront_fee_vat,
-            "AdviceFeeInclVAT":    ifa_fee_value * (1 + vat / 100),
             "EACRows":             eac_rows,
         }
         pdf_bytes = generate_ra_pdf(field_values, alloc_df=alloc_df)
@@ -364,7 +408,7 @@ if st.button("Generate Investment Report (PDF)"):
         field_values = {
             "InvestorName":       investor_name,
             "DateOfBirth":        dob.strftime("%d %B %Y"),
-            "InvestorAge":        f"{investor_age:.1f} years",
+            "InvestorAge":        f"{investor_age_display} years",
             "InvestorEmail":      investor_email,
             "QuotationDate":      today.strftime("%d %B %Y"),
             "InitialLumpSum":     f"R {estimated_lump_sum:,.2f}",
@@ -377,8 +421,6 @@ if st.button("Generate Investment Report (PDF)"):
             "LifestageTICValue":  ls_tic or 0.0,
             "LumpSumRaw":         estimated_lump_sum,
             "PresOption":         pres_fee_option,
-            "UpfrontFeeVATRaw":   upfront_fee_vat,
-            "AdviceFeeInclVAT":   ifa_fee_value * (1 + vat / 100),
             "EACRows":            eac_rows,
         }
         pdf_bytes = generate_pres_pdf(field_values, alloc_df=alloc_df)

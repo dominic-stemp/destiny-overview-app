@@ -23,7 +23,6 @@ LIGHT_GREY = colors.HexColor("#F4F6FA")
 MID_GREY   = colors.HexColor("#D6D9E0")
 BLACK      = colors.HexColor("#1A1A1A")
 WHITE      = colors.white
-HIGHLIGHT  = colors.HexColor("#FFF3CD")
 
 
 # ----------------------------------------------------
@@ -42,7 +41,7 @@ def make_styles():
     )
     styles["section_heading"] = ParagraphStyle(
         "section_heading", fontName="Helvetica-Bold", fontSize=12,
-        textColor=DARK_BLUE, leading=16, spaceBefore=10, spaceAfter=4,
+        textColor=DARK_BLUE, leading=16, spaceBefore=6, spaceAfter=2,
     )
     styles["numbered_heading"] = ParagraphStyle(
         "numbered_heading", fontName="Helvetica-Bold", fontSize=10,
@@ -58,7 +57,8 @@ def make_styles():
     )
     styles["bullet"] = ParagraphStyle(
         "bullet", fontName="Helvetica", fontSize=9, textColor=BLACK,
-        leading=13, spaceAfter=4, leftIndent=12, alignment=TA_JUSTIFY,
+        leading=14, spaceAfter=6, leftIndent=0, firstLineIndent=0,
+        alignment=TA_JUSTIFY,
     )
     styles["table_header"] = ParagraphStyle(
         "table_header", fontName="Helvetica-Bold", fontSize=9,
@@ -131,70 +131,10 @@ def detail_table(rows, styles, col_widths=(90*mm, 80*mm)):
     return t
 
 
-def option1_bracket_table(styles, CONTENT_W, lump_sum):
-    """Static reference table showing full band amounts and fees. Total = sum of all bands."""
-    FEE_BRACKETS = [
-        {"min": 0,          "max": "150,000",    "rate": 2.75,  "band": 150000.00,    "fee": 4125.00},
-        {"min": 150000.01,  "max": "350,000",    "rate": 1.375, "band": 199999.99,    "fee": 2750.00},
-        {"min": 350000.01,  "max": "750,000",    "rate": 0.688, "band": 399999.99,    "fee": 2752.00},
-        {"min": 750000.01,  "max": "2,000,000",  "rate": 0.344, "band": 1249999.99,   "fee": 4300.00},
-        {"min": 2000000.01, "max": "5,000,000",  "rate": 0.25,  "band": 3999999.99,  "fee": 10000.00},
-        {"min": 5000000.01, "max": "50,000,000", "rate": 0.0,   "band": 44999999.99, "fee": 0.0},
-    ]
-    header = [
-        Paragraph("Min (R)",         styles["table_header"]),
-        Paragraph("Max (R)",         styles["table_header"]),
-        Paragraph("Rate",            styles["table_header"]),
-        Paragraph("Band Amount (R)", styles["table_header"]),
-        Paragraph("Fee (R)",         styles["table_header"]),
-    ]
-    data = [header]
-    total_fee = sum(b["fee"] for b in FEE_BRACKETS)
-
-    for b in FEE_BRACKETS:
-        min_str = "\u2013" if b["min"] == 0 else f"{b['min']:,.2f}"
-        fee_str = f"{b['fee']:,.2f}" if b["fee"] > 0 else "\u2013"
-        cs = styles["table_cell_center"]
-        data.append([
-            Paragraph(min_str,             cs),
-            Paragraph(b["max"],            cs),
-            Paragraph(f"{b['rate']}%",     cs),
-            Paragraph(f"{b['band']:,.2f}", cs),
-            Paragraph(fee_str,             cs),
-        ])
-
-    data.append([
-        Paragraph("Total",             styles["table_label"]),
-        Paragraph("",                  styles["table_label_center"]),
-        Paragraph("",                  styles["table_label_center"]),
-        Paragraph("",                  styles["table_label_center"]),
-        Paragraph(f"{total_fee:,.2f}", styles["table_label_center"]),
-    ])
-    total_row_idx = len(data) - 1
-
-    col_w = CONTENT_W / 5
-    t = Table(data, colWidths=[col_w * 0.9, col_w * 0.9, col_w * 0.65, col_w * 1.1, col_w * 1.45])
-    t.setStyle(TableStyle([
-        ("BACKGROUND",    (0, 0), (-1, 0),               DARK_BLUE),
-        ("ROWBACKGROUNDS",(0, 1), (-1, total_row_idx-1), [WHITE, LIGHT_GREY]),
-        ("BACKGROUND",    (0, total_row_idx), (-1, total_row_idx), LIGHT_GREY),
-        ("FONTNAME",      (0, total_row_idx), (-1, total_row_idx), "Helvetica-Bold"),
-        ("BOX",           (0, 0), (-1, -1), 0.5, MID_GREY),
-        ("INNERGRID",     (0, 0), (-1, -1), 0.5, MID_GREY),
-        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN",         (0, 1), (-1, -1), "CENTER"),
-        ("TOPPADDING",    (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 5),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
-    ]))
-    return t
-
-
 def option2_penalty_table(styles, CONTENT_W):
     data = [
         [Paragraph("Period of Membership", styles["table_header"]),
-         Paragraph("Withdrawal Fee",       styles["table_header"])],
+         Paragraph("Cancellation Fee",     styles["table_header"])],
         [Paragraph("One year or less",     styles["table_cell"]),
          Paragraph("2.75% plus VAT",       styles["table_cell_center"])],
         [Paragraph("One to Three years",   styles["table_cell"]),
@@ -219,86 +159,6 @@ def option2_penalty_table(styles, CONTENT_W):
     return t
 
 
-def fund_allocation_table(styles, CONTENT_W, lump_sum, inv_option, ls_name, ls_tic, alloc_df,
-                          upfront_fee_vat=0.0, advice_fee_incl_vat=0.0):
-    """
-    Portfolio | Lump Sum Investment (R) | Initial Fee (R) | Ongoing Fee % | Fund TIC %
-    Initial Fee = once-off upfront fee incl VAT (Option 1 only; shown on first/total row).
-    Ongoing Fee % = annual advice fee incl VAT only.
-    """
-    header = [
-        Paragraph("Portfolio",               styles["table_header"]),
-        Paragraph("Lump Sum\nInvestment (R)", styles["table_header"]),
-        Paragraph("Initial Fee (R)",          styles["table_header"]),
-        Paragraph("Ongoing Fee %",            styles["table_header"]),
-        Paragraph("Fund TIC %",              styles["table_header"]),
-    ]
-    data = [header]
-
-    initial_fee_str = f"{upfront_fee_vat:,.2f}" if upfront_fee_vat > 0 else "\u2013"
-    advice_str      = f"{advice_fee_incl_vat:.2f}%" if advice_fee_incl_vat > 0 else "\u2013"
-
-    if inv_option == "Choice" and alloc_df is not None:
-        active = alloc_df[(alloc_df["Lump Sum %"] > 0) | (alloc_df["Monthly Contribution %"] > 0)]
-        total_weighted_tic = 0.0
-        total_alloc = 0.0
-        first = True
-        for _, row in active.iterrows():
-            alloc_r = lump_sum * (row["Lump Sum %"] / 100)
-            total_alloc += alloc_r
-            total_weighted_tic += alloc_r * (row["TIC"] / 100)
-            data.append([
-                Paragraph(row["Portfolio"],                 styles["table_cell"]),
-                Paragraph(f"{alloc_r:,.2f}",               styles["table_cell_center"]),
-                Paragraph(initial_fee_str if first else "", styles["table_cell_center"]),
-                Paragraph(advice_str      if first else "", styles["table_cell_center"]),
-                Paragraph(f"{row['TIC']:.2f}%",            styles["table_cell_center"]),
-            ])
-            first = False
-        weighted_tic = (total_weighted_tic / lump_sum * 100) if lump_sum > 0 else 0
-        data.append([
-            Paragraph("Weighted Fee",         styles["table_label"]),
-            Paragraph(f"{total_alloc:,.2f}",  styles["table_label_center"]),
-            Paragraph("",                     styles["table_label_center"]),
-            Paragraph("",                     styles["table_label_center"]),
-            Paragraph(f"{weighted_tic:.2f}%", styles["table_label_center"]),
-        ])
-    else:
-        tic = ls_tic if ls_tic else 0.0
-        data.append([
-            Paragraph(ls_name or "",      styles["table_cell"]),
-            Paragraph(f"{lump_sum:,.2f}", styles["table_cell_center"]),
-            Paragraph(initial_fee_str,    styles["table_cell_center"]),
-            Paragraph(advice_str,         styles["table_cell_center"]),
-            Paragraph(f"{tic:.2f}%",      styles["table_cell_center"]),
-        ])
-        data.append([
-            Paragraph("Weighted Fee",     styles["table_label"]),
-            Paragraph(f"{lump_sum:,.2f}", styles["table_label_center"]),
-            Paragraph("",                 styles["table_label_center"]),
-            Paragraph("",                 styles["table_label_center"]),
-            Paragraph(f"{tic:.2f}%",      styles["table_label_center"]),
-        ])
-
-    total_row_idx = len(data) - 1
-    col_w = CONTENT_W / 5
-    t = Table(data, colWidths=[col_w * 1.6, col_w * 1.0, col_w * 0.85, col_w * 0.85, col_w * 0.7])
-    t.setStyle(TableStyle([
-        ("BACKGROUND",    (0, 0), (-1, 0),               DARK_BLUE),
-        ("ROWBACKGROUNDS",(0, 1), (-1, total_row_idx-1), [WHITE, LIGHT_GREY]),
-        ("BACKGROUND",    (0, total_row_idx), (-1, total_row_idx), LIGHT_GREY),
-        ("FONTNAME",      (0, total_row_idx), (-1, total_row_idx), "Helvetica-Bold"),
-        ("BOX",           (0, 0), (-1, -1), 0.5, MID_GREY),
-        ("INNERGRID",     (0, 0), (-1, -1), 0.5, MID_GREY),
-        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("TOPPADDING",    (0, 0), (-1, -1), 4),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 5),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
-    ]))
-    return t
-
-
 # ----------------------------------------------------
 # MAIN GENERATOR
 # ----------------------------------------------------
@@ -319,13 +179,11 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
     story = []
     CONTENT_W = PAGE_W - 2 * MARGIN
 
-    inv_option          = field_values.get("InvestmentOption", "")
-    ls_portfolio        = field_values.get("LifestagePortfolio", "")
-    ls_tic_val          = field_values.get("LifestageTICValue", 0.0)
-    lump_sum_raw        = field_values.get("LumpSumRaw", 0.0)
-    pres_option         = field_values.get("PresOption", 1)
-    upfront_fee_vat     = field_values.get("UpfrontFeeVATRaw", 0.0)
-    advice_fee_incl_vat = field_values.get("AdviceFeeInclVAT", 0.0)
+    inv_option  = field_values.get("InvestmentOption", "")
+    ls_portfolio = field_values.get("LifestagePortfolio", "")
+    ls_tic_val  = field_values.get("LifestageTICValue", 0.0)
+    lump_sum_raw = field_values.get("LumpSumRaw", 0.0)
+    pres_option  = field_values.get("PresOption", 1)
 
     # --------------------------------------------------
     # LOGO
@@ -339,19 +197,20 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
         ht = Table([[logo, ""]], colWidths=[80*mm, CONTENT_W - 80*mm])
         ht.setStyle(TableStyle([("VALIGN", (0,0), (-1,-1), "MIDDLE")]))
         story.append(ht)
-        story.append(Spacer(1, 5*mm))
+        story.append(Spacer(1, 3*mm))
 
     # --------------------------------------------------
     # PAGE 1 — TITLE + INTRO BULLETS
     # --------------------------------------------------
     story.append(Paragraph("Destiny Preservation Funds", S["title_main"]))
     story.append(Paragraph("Investment Overview", S["title_sub"]))
-    story.append(hr(thickness=1.5, color=GOLD, space_before=2, space_after=6))
+    story.append(hr(thickness=1.5, color=GOLD, space_before=2, space_after=8))
 
     story.append(Paragraph(
-        "Important information about the Destiny Preservation Funds:",
+        "<b>Important information about the Destiny Preservation Funds:</b>",
         S["body_left"]
     ))
+    story.append(Spacer(1, 2*mm))
 
     for b in [
         "You can use the Destiny Preservation Funds (the Funds) to preserve your existing retirement savings from a Pension or Provident Fund.",
@@ -368,7 +227,7 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
     story.append(PageBreak())
 
     # --------------------------------------------------
-    # PAGE 2 — PERSONAL + INVESTMENT DETAILS
+    # PAGE 2 — PERSONAL + INVESTMENT DETAILS + FEE OPTION
     # --------------------------------------------------
     story.append(Paragraph("Personal Details", S["section_heading"]))
     story.append(hr())
@@ -385,48 +244,56 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
     story.append(hr())
     story.append(detail_table([
         ("Initial lump sum contribution",        field_values.get("InitialLumpSum", "")),
-        ("Initial Fee",                          field_values.get("InitialFeeNoVAT", "")),
-        ("VAT",                                  field_values.get("InitialFeeVATAmt", "")),
-        ("Lump sum invested after initial fees", field_values.get("NetLumpSum", "")),
+        ("Lump sum invested after initial fees",  field_values.get("NetLumpSum", "")),
     ], S, col_widths=(110*mm, CONTENT_W - 110*mm)))
+    story.append(Spacer(1, 5*mm))
 
-    story.append(Spacer(1, 4*mm))
-    story.append(Paragraph("Please sign below the Option you prefer", S["body_left"]))
-    story.append(Spacer(1, 4*mm))
-
-    # Option 1 bracket table
-    story.append(Paragraph("Option 1 \u2013 Upfront Fee Schedule", S["section_heading"]))
+    # Fee option section
+    story.append(Paragraph("Fee Option Selected", S["section_heading"]))
     story.append(hr())
-    story.append(option1_bracket_table(S, CONTENT_W, lump_sum_raw))
 
-    # Option 2 (only if selected)
-    if pres_option == 2:
-        story.append(Spacer(1, 5*mm))
-        story.append(Paragraph("* Option 2 (Waived Initial Fee)", S["option_heading"]))
+    if pres_option == 1:
+        story.append(Paragraph("Option 1 \u2013 Upfront Fee", S["option_heading"]))
         story.append(Paragraph(
-            "If this option is selected it means that no initial fee is charged, however, if you withdraw funds "
-            "before age 55, for any reason, then the following fee will be charged on the withdrawal amount, "
-            "before any tax is calculated and based on the following period of membership.",
+            "An upfront fee applies on the initial lump sum investment, as per the fee schedule, "
+            "capped at R7,500 (inclusive of VAT).",
+            S["body"]
+        ))
+    elif pres_option == 2:
+        story.append(Paragraph("Option 2 \u2013 Cancellation Fee", S["option_heading"]))
+        story.append(Paragraph(
+            "No upfront fee is charged. However, if you withdraw funds, a cancellation fee applies "
+            "based on your period of membership as per the table below.",
             S["body"]
         ))
         story.append(Spacer(1, 3*mm))
         story.append(option2_penalty_table(S, CONTENT_W))
+    elif pres_option == 3:
+        story.append(Paragraph("Option 3 \u2013 Section 14 (No Fees)", S["option_heading"]))
+        story.append(Paragraph(
+            "No upfront fee and no cancellation fee apply to this investment.",
+            S["body"]
+        ))
 
-    story.append(PageBreak())
+    story.append(Spacer(1, 6*mm))
 
     # --------------------------------------------------
-    # PAGE 3 — LIFESTAGE + PORTFOLIO SELECTION
+    # LIFESTAGE + PORTFOLIO SELECTION
+    # Build entire block then wrap in KeepTogether so it
+    # either fits on this page or moves to the next page.
     # --------------------------------------------------
-    story.append(Paragraph("Destiny LifeStage Model", S["section_heading"]))
-    story.append(hr())
-    story.append(Paragraph(
+    ls_block = []
+
+    ls_block.append(Paragraph("Destiny LifeStage Model", S["section_heading"]))
+    ls_block.append(hr())
+    ls_block.append(Paragraph(
         "The Destiny Retirement Funds\u2019 default investment portfolio is the Destiny LifeStage Model. "
-        "Unless you advise us per Section 4 hereunder, you will automatically be invested in the Life Stage Model. "
+        "Unless you advise us as per your portfolio selection, you will automatically be invested in the Life Stage Model. "
         "The Model invests your assets according to your age and assumes a retirement age of 65. "
         "Based on the information as per this overview, your Investment Portfolio at inception will be the:",
         S["body"]
     ))
-    story.append(Spacer(1, 3*mm))
+    ls_block.append(Spacer(1, 3*mm))
 
     # LifeStage table — only the applicable row
     if inv_option == "Lifestage":
@@ -450,13 +317,13 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
             ("LEFTPADDING",   (0, 0), (-1, -1), 6),
             ("RIGHTPADDING",  (0, 0), (-1, -1), 6),
         ]))
-        story.append(ls_table)
-        story.append(Spacer(1, 6*mm))
+        ls_block.append(ls_table)
+        ls_block.append(Spacer(1, 3*mm))
 
-    # Portfolio selection — Choice only
-    if inv_option == "Choice":
-        story.append(Paragraph("Personal Portfolio Selection", S["section_heading"]))
-        story.append(hr())
+    # Portfolio selection — Own Choice only
+    if inv_option == "Own Choice":
+        ls_block.append(Paragraph("Personal Portfolio Selection", S["section_heading"]))
+        ls_block.append(hr())
 
         if alloc_df is not None:
             active = alloc_df[(alloc_df["Lump Sum %"] > 0) | (alloc_df["Monthly Contribution %"] > 0)]
@@ -487,18 +354,18 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
                 ("LEFTPADDING",   (0, 0), (-1, -1), 6),
                 ("RIGHTPADDING",  (0, 0), (-1, -1), 6),
             ]))
-            story.append(ch_table)
+            ls_block.append(ch_table)
         else:
-            story.append(Paragraph("No portfolio allocations entered.", S["body_left"]))
+            ls_block.append(Paragraph("No portfolio allocations entered.", S["body_left"]))
 
-        # Investor declaration (Choice only)
-        story.append(Spacer(1, 6*mm))
-        story.append(Paragraph(
+        # Investor declaration (Own Choice only)
+        ls_block.append(Spacer(1, 3*mm))
+        ls_block.append(Paragraph(
             "I have elected to Opt Out of the Destiny LifeStage Model and I have selected the portfolios "
             "as per the above table.",
             S["body_left"]
         ))
-        story.append(Spacer(1, 8*mm))
+        ls_block.append(Spacer(1, 4*mm))
         sig_data = [[
             Paragraph("Signature of investor", S["signature_label"]),
             Paragraph("", S["signature_label"]),
@@ -510,19 +377,14 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
             ("TOPPADDING",    (0, 0), (-1, -1), 0),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
         ]))
-        story.append(sig_table)
-        story.append(Spacer(1, 5*mm))
+        ls_block.append(sig_table)
+        ls_block.append(Spacer(1, 3*mm))
 
-    # Fund allocation table (all options)
-    story.append(Paragraph("Fund Allocation Detail", S["section_heading"]))
-    story.append(hr())
-    story.append(fund_allocation_table(S, CONTENT_W, lump_sum_raw, inv_option, ls_portfolio, ls_tic_val, alloc_df,
-                                        upfront_fee_vat=upfront_fee_vat, advice_fee_incl_vat=advice_fee_incl_vat))
-
+    story.append(KeepTogether(ls_block))
     story.append(PageBreak())
 
     # --------------------------------------------------
-    # PAGE 4 — EAC TABLE (4 cols) + FEE DESCRIPTIONS
+    # EAC TABLE (4 cols) + FEE DESCRIPTIONS (all on one page)
     # --------------------------------------------------
     story.append(Paragraph("Effective Annual Cost (EAC)", S["section_heading"]))
     story.append(hr())
@@ -551,6 +413,11 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
         return f"{v:.2f}%" if v is not None else "N/A"
 
     for row in eac_rows:
+        # Hide Other row if all values are zero
+        if row["label"] == "Other":
+            vals = [row.get(k) for k in ("y1", "y3", "y5", "y55")]
+            if all((v is None or v == 0.0) for v in vals):
+                continue
         is_total = row.get("is_total", False)
         cs = S["table_label_center"] if is_total else S["table_cell_center"]
         eac_data.append([
@@ -582,7 +449,20 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
         ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
     ]))
     story.append(eac_table)
-    story.append(Spacer(1, 6*mm))
+    story.append(Spacer(1, 3*mm))
+
+    # Other charges description changes based on pres_option
+    if pres_option == 2:
+        other_charges_text = [
+            "This fee is paid to GIB Financial Services for portfolio construction\u2026",
+            "A cancellation fee may apply if you withdraw your investment before the applicable period. "
+            "The cancellation fee shown in the Advice row of the EAC table above reflects the worst-case "
+            "reduction in yield based on the maximum cancellation fee of 2.75% (plus VAT).",
+        ]
+    else:
+        other_charges_text = [
+            "This fee is paid to GIB Financial Services for portfolio construction\u2026",
+        ]
 
     for heading, body_texts in [
         ("1.\u2002Investment Management Charges", [
@@ -618,9 +498,7 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
             "investment. The ongoing administration fee is illustrated in the above table. We show the combined "
             "effect of all administration fees in the administration charge component in the EAC table.",
         ]),
-        ("4.\u2002Other Charges", [
-            "This fee is paid to GIB Financial Services for portfolio construction\u2026",
-        ]),
+        ("4.\u2002Other Charges", other_charges_text),
     ]:
         items = [Paragraph(heading, S["numbered_heading"])]
         items += [Paragraph(t, S["body"]) for t in body_texts]
@@ -684,14 +562,14 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
     ))
 
     # Investor Declaration
-    story.append(Spacer(1, 6*mm))
+    story.append(Spacer(1, 3*mm))
     story.append(Paragraph("Investor Declaration", S["section_heading"]))
     story.append(hr())
     story.append(Paragraph(
         "I confirm that I have read and understand the information provided in this investment overview.",
         S["body_left"]
     ))
-    story.append(Spacer(1, 8*mm))
+    story.append(Spacer(1, 4*mm))
     sig_data = [[
         Paragraph("Signed at", S["signature_label"]),
         Paragraph("",          S["signature_label"]),
@@ -707,18 +585,18 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
     ]))
     story.append(sig_table)
-    story.append(Spacer(1, 8*mm))
+    story.append(Spacer(1, 4*mm))
 
     # Contact boxes
     half = (CONTENT_W - 6*mm) / 2
     contact_table = Table([[
         [
-            Paragraph("Destiny Preservation Funds",       S["contact_heading"]),
-            Paragraph("FSCA registration Number 12/8/38116/R", S["contact_body"]),
-            Paragraph("P O Box 3211, Houghton, 2041",     S["contact_body"]),
-            Paragraph("Telephone: 0860 00FUND (3863)",    S["contact_body"]),
-            Paragraph("rfs@gib.co.za",                    S["contact_body"]),
-            Paragraph("www.gib.co.za",                    S["contact_body"]),
+            Paragraph("Destiny Preservation Funds",           S["contact_heading"]),
+            Paragraph("FSCA registration Number 12/8/38116/R",S["contact_body"]),
+            Paragraph("P O Box 3211, Houghton, 2041",         S["contact_body"]),
+            Paragraph("Telephone: 0860 00FUND (3863)",        S["contact_body"]),
+            Paragraph("rfs@gib.co.za",                        S["contact_body"]),
+            Paragraph("www.gib.co.za",                        S["contact_body"]),
         ],
         [
             Paragraph("Administrator",                        S["contact_heading"]),
