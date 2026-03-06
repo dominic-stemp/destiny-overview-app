@@ -318,22 +318,26 @@ else:  # Option 3
     eac_cancel_fee = 0.0
     include_upfront = False
 
-eac = compute_eac_table(
-    fund_type                 = "RA" if is_ra else "Preservation",
-    age                       = investor_age,
-    investment_option         = investment_option,
-    selected_portfolio        = ls_name,
-    choice_allocations        = choice_allocs,
-    ifa_fee_ex_vat            = ifa_fee_value,
-    vat_rate                  = VAT,
-    admin_base_ex_vat         = 0.75,
-    tic_map                   = TIC_MAP,
-    include_upfront_in_eac    = include_upfront,
-    upfront_fee_incl_vat      = eac_upfront_fee,
-    cancellation_fee_incl_vat = eac_cancel_fee,
-    lump_sum                  = estimated_lump_sum,
-    monthly_contribution      = monthly_contribution,
-)
+try:
+    eac = compute_eac_table(
+        fund_type                 = "RA" if is_ra else "Preservation",
+        age                       = investor_age,
+        investment_option         = investment_option,
+        selected_portfolio        = ls_name,
+        choice_allocations        = choice_allocs,
+        ifa_fee_ex_vat            = ifa_fee_value,
+        vat_rate                  = VAT,
+        admin_base_ex_vat         = 0.75,
+        tic_map                   = TIC_MAP,
+        include_upfront_in_eac    = include_upfront,
+        upfront_fee_incl_vat      = eac_upfront_fee,
+        cancellation_fee_incl_vat = eac_cancel_fee,
+        lump_sum                  = estimated_lump_sum,
+        monthly_contribution      = monthly_contribution,
+    )
+except Exception as _eac_err:
+    st.error(f"EAC calculation error ({type(_eac_err).__name__}): {_eac_err}")
+    st.stop()
 
 # Convert to PDF-compatible row dicts
 eac_rows = eac_table_to_rows(eac, "RA" if is_ra else "Preservation")
