@@ -131,16 +131,12 @@ def compute_eac_table(
 
     # 6. Disclosure periods
     if fund_type == "RA":
-        numeric_periods = [("Next 1 year", 1), ("Next 3 years", 3),
-                           ("Next 5 years", 5), ("Next 10 years", 10)]
+        numeric_periods = [("1 year", 1), ("3 years", 3), ("5 years", 5), ("10 years", 10)]
     else:
-        numeric_periods = [("Next 1 year", 1), ("Next 3 years", 3), ("Next 5 years", 5)]
+        numeric_periods = [("1 year", 1), ("3 years", 3), ("5 years", 5), ("10 years", 10)]
 
-    years_to_55 = 55.0 - age
-    age55_applicable = years_to_55 > 0
-    n55 = max(1, math.ceil(years_to_55)) if age55_applicable else None
-    all_columns = [label for label, _ in numeric_periods] + ["Age 55"]
-    all_periods_n = [n for _, n in numeric_periods] + ([n55] if age55_applicable else [None])
+    all_columns = [label for label, _ in numeric_periods]
+    all_periods_n = [n for _, n in numeric_periods]
 
     # 7. Combined flat % for simulations
     combined_flat_pct = imc_pct + advice_pct + admin_pct
@@ -215,7 +211,8 @@ def eac_table_to_rows(eac: dict, fund_type: str) -> list[dict]:
     cols = eac["columns"]
     col_key_map = {
         "Next 1 year": "y1", "Next 3 years": "y3", "Next 5 years": "y5",
-        "Next 10 years": "y10", "Age 55": "y55",
+        "Next 10 years": "y10", "Age 55": "y55", "10 years": "y10",
+        "1 year": "y1", "3 years": "y3", "5 years": "y5",
     }
     component_order = ["imc", "advice", "admin", "other", "total"]
     label_map = {

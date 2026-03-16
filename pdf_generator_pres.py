@@ -399,56 +399,63 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
     ))
     story.append(Spacer(1, 3*mm))
 
-    eac_rows = field_values.get("EACRows", [])
-    eac_header = [
-        Paragraph("",             S["table_header"]),
-        Paragraph("Next 1 year",  S["table_header"]),
-        Paragraph("Next 3 years", S["table_header"]),
-        Paragraph("Next 5 years", S["table_header"]),
-        Paragraph("Age 55",       S["table_header"]),
-    ]
-    eac_data = [eac_header]
-
     def fmt(v):
         return f"{v:.2f}%" if v is not None else "N/A"
 
-    for row in eac_rows:
-        # Hide Other row if all values are zero
-        if row["label"] == "Other":
-            vals = [row.get(k) for k in ("y1", "y3", "y5", "y55")]
-            if all((v is None or v == 0.0) for v in vals):
-                continue
-        is_total = row.get("is_total", False)
-        cs = S["table_label_center"] if is_total else S["table_cell_center"]
-        eac_data.append([
-            Paragraph(row["label"],        cs),
-            Paragraph(fmt(row.get("y1")),  cs),
-            Paragraph(fmt(row.get("y3")),  cs),
-            Paragraph(fmt(row.get("y5")),  cs),
-            Paragraph(fmt(row.get("y55")), cs),
-        ])
+    def build_eac_table(rows, content_w):
+        header = [
+            Paragraph("",         S["table_header"]),
+            Paragraph("1 year",   S["table_header"]),
+            Paragraph("3 years",  S["table_header"]),
+            Paragraph("5 years",  S["table_header"]),
+            Paragraph("10 years", S["table_header"]),
+        ]
+        data = [header]
+        for row in rows:
+            if row["label"] == "Other":
+                vals = [row.get(k) for k in ("y1", "y3", "y5", "y10")]
+                if all((v is None or v == 0.0) for v in vals):
+                    continue
+            is_total = row.get("is_total", False)
+            cs = S["table_label_center"] if is_total else S["table_cell_center"]
+            data.append([
+                Paragraph(row["label"],        cs),
+                Paragraph(fmt(row.get("y1")),  cs),
+                Paragraph(fmt(row.get("y3")),  cs),
+                Paragraph(fmt(row.get("y5")),  cs),
+                Paragraph(fmt(row.get("y10")), cs),
+            ])
+        total_idx = len(data) - 1
+        col_w = content_w / 5
+        t = Table(data, colWidths=[col_w * 1.8, col_w * 0.8, col_w * 0.8, col_w * 0.8, col_w * 0.8])
+        t.setStyle(TableStyle([
+            ("BACKGROUND",    (0, 0), (-1, 0),       DARK_BLUE),
+            ("ROWBACKGROUNDS",(0, 1), (-1, total_idx - 1), [WHITE, LIGHT_GREY]),
+            ("BACKGROUND",    (0, total_idx), (-1, total_idx), LIGHT_GREY),
+            ("FONTNAME",      (0, total_idx), (-1, total_idx), "Helvetica-Bold"),
+            ("BOX",           (0, 0), (-1, -1), 0.5, MID_GREY),
+            ("INNERGRID",     (0, 0), (-1, -1), 0.5, MID_GREY),
+            ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
+            ("ALIGN",         (0, 0), (-1, -1), "CENTER"),
+            ("TOPPADDING",    (0, 0), (-1, -1), 5),
+            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
+            ("LEFTPADDING",   (0, 0), (-1, -1), 5),
+            ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
+        ]))
+        return t
 
-    total_row_idx = len(eac_data) - 1
-    col_w = CONTENT_W / 5
-    eac_table = Table(
-        eac_data,
-        colWidths=[col_w * 1.8, col_w * 0.8, col_w * 0.8, col_w * 0.8, col_w * 0.8]
-    )
-    eac_table.setStyle(TableStyle([
-        ("BACKGROUND",    (0, 0), (-1, 0),  DARK_BLUE),
-        ("ROWBACKGROUNDS",(0, 1), (-1, total_row_idx - 1), [WHITE, LIGHT_GREY]),
-        ("BACKGROUND",    (0, total_row_idx), (-1, total_row_idx), LIGHT_GREY),
-        ("FONTNAME",      (0, total_row_idx), (-1, total_row_idx), "Helvetica-Bold"),
-        ("BOX",           (0, 0), (-1, -1), 0.5, MID_GREY),
-        ("INNERGRID",     (0, 0), (-1, -1), 0.5, MID_GREY),
-        ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
-        ("ALIGN",         (0, 0), (-1, -1), "CENTER"),
-        ("TOPPADDING",    (0, 0), (-1, -1), 5),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ("LEFTPADDING",   (0, 0), (-1, -1), 5),
-        ("RIGHTPADDING",  (0, 0), (-1, -1), 5),
-    ]))
-    story.append(eac_table)
+    eac_rows          = field_values.get("EACRows", [])
+    eac_rows_no_cancel = field_values.get("EACRowsNoCancel")
+
+    if pres_option == 2 and eac_rows_no_cancel:
+        story.append(Paragraph("Without cancellation fee", S["option_heading"]))
+        story.append(build_eac_table(eac_rows_no_cancel, CONTENT_W))
+        story.append(Spacer(1, 4*mm))
+        story.append(Paragraph("With cancellation fee (worst case)", S["option_heading"]))
+        story.append(build_eac_table(eac_rows, CONTENT_W))
+    else:
+        story.append(build_eac_table(eac_rows, CONTENT_W))
+
     story.append(Spacer(1, 3*mm))
 
     # Other charges description changes based on pres_option
@@ -456,14 +463,15 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
         other_charges_text = [
             "This fee is paid to GIB Financial Services for portfolio construction\u2026",
             "A cancellation fee may apply if you withdraw your investment before the applicable period. "
-            "The cancellation fee shown in the Advice row of the EAC table above reflects the worst-case "
-            "reduction in yield based on the maximum cancellation fee of 2.75% (plus VAT).",
+            "The second EAC table above reflects the worst-case reduction in yield based on the maximum "
+            "cancellation fee of 2.75% (plus VAT).",
         ]
     else:
         other_charges_text = [
             "This fee is paid to GIB Financial Services for portfolio construction\u2026",
         ]
 
+    fee_desc_items = []
     for heading, body_texts in [
         ("1.\u2002Investment Management Charges", [
             "The next table shows the investment fund manager initial and ongoing fees, the investment fund total "
@@ -500,9 +508,9 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
         ]),
         ("4.\u2002Other Charges", other_charges_text),
     ]:
-        items = [Paragraph(heading, S["numbered_heading"])]
-        items += [Paragraph(t, S["body"]) for t in body_texts]
-        story.append(KeepTogether(items))
+        fee_desc_items.append(Paragraph(heading, S["numbered_heading"]))
+        fee_desc_items += [Paragraph(t, S["body"]) for t in body_texts]
+    story.append(KeepTogether(fee_desc_items))
 
     story.append(PageBreak())
 

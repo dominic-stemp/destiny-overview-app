@@ -208,11 +208,9 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
 
     story.append(Paragraph("Investment Details", S["section_heading"]))
     story.append(hr())
-    monthly = field_values.get("MonthlyContribution", "R 0.00")
     story.append(detail_table([
-        ("Initial lump sum contribution",                       field_values.get("InitialLumpSum", "")),
-        ("Recurring contribution",                              monthly),
-        ("Recurring contribution invested after initial fees",  monthly),
+        ("Initial lump sum contribution", field_values.get("InitialLumpSum", "")),
+        ("Recurring contribution",        field_values.get("MonthlyContribution", "R 0")),
     ], S, col_widths=(110*mm, CONTENT_W - 110*mm)))
     story.append(Spacer(1, 5*mm))
 
@@ -341,12 +339,11 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
     eac_rows = field_values.get("EACRows", [])
 
     eac_header = [
-        Paragraph("", S["table_header"]),
-        Paragraph("Next 1 year",   S["table_header"]),
-        Paragraph("Next 3 years",  S["table_header"]),
-        Paragraph("Next 5 years",  S["table_header"]),
-        Paragraph("Next 10 years", S["table_header"]),
-        Paragraph("Age 55",        S["table_header"]),
+        Paragraph("",             S["table_header"]),
+        Paragraph("1 year",       S["table_header"]),
+        Paragraph("3 years",      S["table_header"]),
+        Paragraph("5 years",      S["table_header"]),
+        Paragraph("10 years",     S["table_header"]),
     ]
     eac_data = [eac_header]
 
@@ -356,26 +353,25 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
     for row in eac_rows:
         # Hide Other row if all values are zero
         if row["label"] == "Other":
-            vals = [row.get(k) for k in ("y1", "y3", "y5", "y10", "y55")]
+            vals = [row.get(k) for k in ("y1", "y3", "y5", "y10")]
             if all((v is None or v == 0.0) for v in vals):
                 continue
         is_total = row.get("is_total", False)
         lbl_s = S["table_label_center"] if is_total else S["table_cell_center"]
         val_s = S["table_label_center"] if is_total else S["table_cell_center"]
         eac_data.append([
-            Paragraph(row["label"],         lbl_s),
-            Paragraph(fmt(row.get("y1")),   val_s),
-            Paragraph(fmt(row.get("y3")),   val_s),
-            Paragraph(fmt(row.get("y5")),   val_s),
-            Paragraph(fmt(row.get("y10")),  val_s),
-            Paragraph(fmt(row.get("y55")),  val_s),
+            Paragraph(row["label"],        lbl_s),
+            Paragraph(fmt(row.get("y1")),  val_s),
+            Paragraph(fmt(row.get("y3")),  val_s),
+            Paragraph(fmt(row.get("y5")),  val_s),
+            Paragraph(fmt(row.get("y10")), val_s),
         ])
 
     total_row_idx = len(eac_data) - 1
-    col_w = CONTENT_W / 6
+    col_w = CONTENT_W / 5
     eac_table = Table(
         eac_data,
-        colWidths=[col_w * 1.8, col_w * 0.84, col_w * 0.84, col_w * 0.84, col_w * 0.84, col_w * 0.84]
+        colWidths=[col_w * 1.8, col_w * 0.8, col_w * 0.8, col_w * 0.8, col_w * 0.8]
     )
     eac_table.setStyle(TableStyle([
         ("BACKGROUND",    (0, 0), (-1, 0),  DARK_BLUE),
@@ -394,6 +390,7 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
     story.append(eac_table)
     story.append(Spacer(1, 3*mm))
 
+    fee_desc_items = []
     for heading, body_text in [
         ("1.\u2002Investment Management Charges", [
             "The next table shows the investment fund manager initial and ongoing fees, the investment fund total "
@@ -432,9 +429,9 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
             "This fee is paid to GIB Financial Services for portfolio construction\u2026",
         ]),
     ]:
-        items = [Paragraph(heading, S["numbered_heading"])]
-        items += [Paragraph(t, S["body"]) for t in body_text]
-        story.append(KeepTogether(items))
+        fee_desc_items.append(Paragraph(heading, S["numbered_heading"]))
+        fee_desc_items += [Paragraph(t, S["body"]) for t in body_text]
+    story.append(KeepTogether(fee_desc_items))
 
     story.append(PageBreak())
 
