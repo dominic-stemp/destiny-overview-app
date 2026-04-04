@@ -163,8 +163,12 @@ def compute_eac_table(
         # Admin = base only
         admin_vals.append(round(admin_pct + 1e-12, 4))
 
-        # Other = cancellation RIY (Option 2) or 0
-        if use_riy_cancel:
+        # Other = cancellation fee, but only if cancellation still applies at this period.
+        # Cancellation falls away once membership >= 5 years OR investor reaches age 55.
+        cancel_applies = (n < 5) and (age + n < 55)
+        if not cancel_applies:
+            other_vals.append(0.0)
+        elif use_riy_cancel:
             cancel_riy = _compute_riy(n, lump_sum, cancellation_fee_incl_vat, monthly_contribution, combined_flat_pct)
             other_vals.append(round(cancel_riy + 1e-12, 4))
         elif cancel_straight_pct > 0:

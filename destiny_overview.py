@@ -28,11 +28,14 @@ FEE_BRACKETS_OPTION_1 = [
     {"min": 5000000.01, "max": float("inf"), "rate": 0.0},
 ]
 
-UPFRONT_FEE_CAP = 7500.0  # Option 1 fee capped at R7,500 incl VAT
+UPFRONT_FEE_CAP_EX_VAT = 7500.0  # Option 1 fee capped at R7,500 excl VAT (R8,625 incl VAT)
 
-def calculate_upfront_fee(lump_sum, pres_option, vat_pct):
-    """Tiered (progressive/marginal) upfront fee across band slices, capped at R7,500."""
+def calculate_upfront_fee(lump_sum, pres_option, vat_pct, investor_age=0):
+    """Tiered (progressive/marginal) upfront fee across band slices, capped at R7,500 excl VAT.
+    No upfront fee charged for investors aged 55 or older."""
     if pres_option != 1:
+        return 0.0, 0.0, 0.0
+    if investor_age >= 55:
         return 0.0, 0.0, 0.0
     remaining = lump_sum
     total_no_vat = 0.0
@@ -43,11 +46,10 @@ def calculate_upfront_fee(lump_sum, pres_option, vat_pct):
         slice_amt = min(remaining, band_size)
         total_no_vat += slice_amt * (b["rate"] / 100)
         remaining -= slice_amt
+    # Cap at R7,500 excl VAT
+    if total_no_vat > UPFRONT_FEE_CAP_EX_VAT:
+        total_no_vat = UPFRONT_FEE_CAP_EX_VAT
     fee_vat = total_no_vat * (1 + vat_pct / 100)
-    # Cap at R7,500 incl VAT
-    if fee_vat > UPFRONT_FEE_CAP:
-        fee_vat = UPFRONT_FEE_CAP
-        total_no_vat = fee_vat / (1 + vat_pct / 100)
     effective_rate = (total_no_vat / lump_sum * 100) if lump_sum > 0 else 0.0
     return fee_vat, total_no_vat, effective_rate
 
@@ -236,35 +238,48 @@ if fund == "Retirement Annuity":
 ifa_fee       = st.selectbox("IFA Fee (ex VAT)", ["0%", "0.25%", "0.35%", "0.5%", "0.75%"])
 ifa_fee_value = float(ifa_fee.replace("%", ""))
 
-investment_option = st.selectbox(
-    "Investment Option", ["Lifestage", "Passive Lifestage", "Own Choice"]
-)
+if fund == "Preservation":
+    investment_option = st.selectbox(
+        "Investment Option", ["Lifestage", "Passive Lifestage"]
+    )
+else:
+    investment_option = st.selectbox(
+        "Investment Option", ["Lifestage", "Passive Lifestage", "Own Choice"]
+    )
 
 # ----------------------------------------------------
 # UPFRONT FEE CALC + DISPLAY (Preservation only)
 # ----------------------------------------------------
 upfront_fee_vat, upfront_fee_no_vat, upfront_rate_display = calculate_upfront_fee(
-    estimated_lump_sum, pres_fee_option, VAT
+    estimated_lump_sum, pres_fee_option, VAT, investor_age
 )
 net_lump_sum = estimated_lump_sum - upfront_fee_vat
 
 if fund == "Preservation":
     if pres_fee_option == 1:
         st.markdown("<div class='section-heading'>Option 1 – Upfront Fee</div>", unsafe_allow_html=True)
-        st.write(f"**Upfront Rate:** {upfront_rate_display:.3f}%")
-        st.write(f"**Upfront Fee (Incl VAT):** R {upfront_fee_vat:,.2f}")
-        st.write(f"**Net Amount Invested:** R {int(net_lump_sum):,}")
+        if investor_age >= 55:
+            st.info("No upfront fee applies — investor is aged 55 or older.")
+            st.write(f"**Net Amount Invested:** R {int(net_lump_sum):,}")
+        else:
+            st.write(f"**Upfront Rate:** {upfront_rate_display:.3f}%")
+            st.write(f"**Upfront Fee (Incl VAT):** R {upfront_fee_vat:,.2f}")
+            st.write(f"**Net Amount Invested:** R {int(net_lump_sum):,}")
     elif pres_fee_option == 2:
         st.markdown("<div class='section-heading'>Option 2 – Cancellation Fee</div>", unsafe_allow_html=True)
-        st.write(
-            "No initial fee is charged. However, if you withdraw funds, "
-            "a cancellation fee applies based on your period of membership:"
-        )
-        opt2_data = {
-            "Period of Membership": ["One year or less", "One to Three years", "Three to Five years", "Five years or more"],
-            "Cancellation Fee": ["2.75% plus VAT", "1.75% plus VAT", "0.75% plus VAT", "0%"],
-        }
-        st.table(pd.DataFrame(opt2_data))
+        if investor_age >= 55:
+            st.info("No cancellation fee applies — investor is aged 55 or older.")
+        else:
+            st.write(
+                "No initial fee is charged. However, if you withdraw funds, "
+                "a cancellation fee applies based on your period of membership. "
+                "The cancellation fee falls away once the investor reaches age 55 or has been a member for 5 or more years."
+            )
+            opt2_data = {
+                "Period of Membership": ["One year or less", "One to Three years", "Three to Five years", "Five years or more"],
+                "Cancellation Fee": ["2.75% plus VAT", "1.75% plus VAT", "0.75% plus VAT", "0%"],
+            }
+            st.table(pd.DataFrame(opt2_data))
         st.write(f"**Net Amount Invested:** R {estimated_lump_sum:,}")
     elif pres_fee_option == 3:
         st.markdown("<div class='section-heading'>Option 3 – Section 14 (No Fees)</div>", unsafe_allow_html=True)
@@ -309,6 +324,12 @@ if investment_option == "Own Choice":
         })
 
     alloc_df = pd.DataFrame(allocations)
+    lump_total = alloc_df["Lump Sum %"].sum()
+    cont_total  = alloc_df["Monthly Contribution %"].sum()
+    if lump_total != 100:
+        st.error(f"Lump Sum allocations must add up to 100% (currently {lump_total}%).")
+    if monthly_contribution > 0 and cont_total != 100:
+        st.error(f"Monthly Contribution allocations must add up to 100% (currently {cont_total}%).")
     imc = investment_mgmt_from_alloc(alloc_df, estimated_lump_sum)
     st.write(f"**Investment Management Fee (%):** {imc:.4f}%")
     st.dataframe(alloc_df.set_index("Portfolio"), hide_index=False)
@@ -338,7 +359,7 @@ elif pres_fee_option == 1:
     include_upfront = True
 elif pres_fee_option == 2:
     eac_upfront_fee = 0.0
-    eac_cancel_fee = estimated_lump_sum * 0.0275 * (1 + VAT / 100)
+    eac_cancel_fee = 0.0 if investor_age >= 55 else estimated_lump_sum * 0.0275 * (1 + VAT / 100)
     include_upfront = False
 else:  # Option 3
     eac_upfront_fee = 0.0
@@ -366,16 +387,7 @@ try:
         upfront_fee_incl_vat      = eac_upfront_fee,
         cancellation_fee_incl_vat = eac_cancel_fee,
     )
-    # For Pres Option 2: also compute a no-cancellation-fee EAC (shown first)
-    if not is_ra and pres_fee_option == 2:
-        eac_no_cancel = compute_eac_table(
-            **_eac_common,
-            include_upfront_in_eac    = False,
-            upfront_fee_incl_vat      = 0.0,
-            cancellation_fee_incl_vat = 0.0,
-        )
-    else:
-        eac_no_cancel = None
+    eac_no_cancel = None
 except Exception as _eac_err:
     st.error(f"EAC calculation error ({type(_eac_err).__name__}): {_eac_err}")
     st.stop()
@@ -383,7 +395,7 @@ except Exception as _eac_err:
 # Convert to PDF-compatible row dicts
 fund_key = "RA" if is_ra else "Preservation"
 eac_rows = eac_table_to_rows(eac, fund_key)
-eac_rows_no_cancel = eac_table_to_rows(eac_no_cancel, fund_key) if eac_no_cancel else None
+eac_rows_no_cancel = None
 
 # ----------------------------------------------------
 # EAC TABLE PREVIEW (on-screen)
@@ -407,15 +419,7 @@ def _rows_to_df(row_list, hide_zero_other=True):
         display.append(row_dict)
     return pd.DataFrame(display)
 
-if eac_no_cancel is not None and estimated_lump_sum > 0:
-    st.markdown("**Without cancellation fee**")
-    st.dataframe(_rows_to_df(eac_rows_no_cancel, hide_zero_other=True), hide_index=True, use_container_width=True)
-    st.markdown("**With cancellation fee (worst case)**")
-    st.dataframe(_rows_to_df(eac_rows, hide_zero_other=False), hide_index=True, use_container_width=True)
-elif eac_no_cancel is not None and estimated_lump_sum == 0:
-    st.info("Enter an estimated lump sum to see the cancellation fee EAC comparison.")
-else:
-    st.dataframe(_rows_to_df(eac_rows), hide_index=True, use_container_width=True)
+st.dataframe(_rows_to_df(eac_rows, hide_zero_other=True), hide_index=True, use_container_width=True)
 
 # ----------------------------------------------------
 # GENERATE PDF BUTTON
@@ -478,8 +482,8 @@ if st.button("Generate Investment Report (PDF)"):
             "LifestageTICValue":  ls_tic or 0.0,
             "LumpSumRaw":         estimated_lump_sum,
             "PresOption":         pres_fee_option,
+            "InvestorAgeRaw":     investor_age,
             "EACRows":            eac_rows,
-            "EACRowsNoCancel":    eac_rows_no_cancel,
         }
         pdf_bytes = generate_pres_pdf(field_values, alloc_df=alloc_df)
 

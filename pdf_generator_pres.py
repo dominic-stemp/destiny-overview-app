@@ -162,7 +162,7 @@ def option2_penalty_table(styles, CONTENT_W):
 # ----------------------------------------------------
 # MAIN GENERATOR
 # ----------------------------------------------------
-def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
+def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0) -> bytes:
 
     buffer = BytesIO()
     PAGE_W, PAGE_H = A4
@@ -179,11 +179,12 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
     story = []
     CONTENT_W = PAGE_W - 2 * MARGIN
 
-    inv_option  = field_values.get("InvestmentOption", "")
+    inv_option   = field_values.get("InvestmentOption", "")
     ls_portfolio = field_values.get("LifestagePortfolio", "")
-    ls_tic_val  = field_values.get("LifestageTICValue", 0.0)
+    ls_tic_val   = field_values.get("LifestageTICValue", 0.0)
     lump_sum_raw = field_values.get("LumpSumRaw", 0.0)
     pres_option  = field_values.get("PresOption", 1)
+    inv_age      = field_values.get("InvestorAgeRaw", investor_age)
 
     # --------------------------------------------------
     # LOGO
@@ -254,20 +255,35 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
 
     if pres_option == 1:
         story.append(Paragraph("Option 1 \u2013 Upfront Fee", S["option_heading"]))
-        story.append(Paragraph(
-            "An upfront fee applies on the initial lump sum investment, as per the fee schedule, "
-            "capped at R7,500 (inclusive of VAT).",
-            S["body"]
-        ))
+        if inv_age >= 55:
+            story.append(Paragraph(
+                "No upfront fee is charged. As the investor is aged 55 or older at inception, "
+                "the upfront fee does not apply.",
+                S["body"]
+            ))
+        else:
+            story.append(Paragraph(
+                "An upfront fee applies on the initial lump sum investment, as per the fee schedule, "
+                "capped at R7,500 (excl. VAT) / R8,625 (incl. VAT).",
+                S["body"]
+            ))
     elif pres_option == 2:
         story.append(Paragraph("Option 2 \u2013 Cancellation Fee", S["option_heading"]))
-        story.append(Paragraph(
-            "No upfront fee is charged. However, if you withdraw funds, a cancellation fee applies "
-            "based on your period of membership as per the table below.",
-            S["body"]
-        ))
-        story.append(Spacer(1, 3*mm))
-        story.append(option2_penalty_table(S, CONTENT_W))
+        if inv_age >= 55:
+            story.append(Paragraph(
+                "No cancellation fee applies. As the investor is aged 55 or older at inception, "
+                "the cancellation fee does not apply.",
+                S["body"]
+            ))
+        else:
+            story.append(Paragraph(
+                "No upfront fee is charged. However, if you withdraw funds, a cancellation fee applies "
+                "based on your period of membership as per the table below. "
+                "The cancellation fee falls away once the investor reaches age 55 or has been a member for 5 or more years.",
+                S["body"]
+            ))
+            story.append(Spacer(1, 3*mm))
+            story.append(option2_penalty_table(S, CONTENT_W))
     elif pres_option == 3:
         story.append(Paragraph("Option 3 \u2013 Section 14 (No Fees)", S["option_heading"]))
         story.append(Paragraph(
@@ -447,28 +463,23 @@ def generate_pres_pdf(field_values: dict, alloc_df=None) -> bytes:
     eac_rows          = field_values.get("EACRows", [])
     eac_rows_no_cancel = field_values.get("EACRowsNoCancel")
 
-    if pres_option == 2 and eac_rows_no_cancel:
-        story.append(Paragraph("Without cancellation fee", S["option_heading"]))
-        story.append(build_eac_table(eac_rows_no_cancel, CONTENT_W))
-        story.append(Spacer(1, 4*mm))
-        story.append(Paragraph("With cancellation fee (worst case)", S["option_heading"]))
-        story.append(build_eac_table(eac_rows, CONTENT_W))
-    else:
-        story.append(build_eac_table(eac_rows, CONTENT_W))
+    story.append(build_eac_table(eac_rows, CONTENT_W))
 
     story.append(Spacer(1, 3*mm))
 
-    # Other charges description changes based on pres_option
-    if pres_option == 2:
+    # Other charges description changes based on pres_option and age
+    if pres_option == 2 and inv_age < 55:
         other_charges_text = [
-            "This fee is paid to GIB Financial Services for portfolio construction\u2026",
-            "A cancellation fee may apply if you withdraw your investment before the applicable period. "
-            "The second EAC table above reflects the worst-case reduction in yield based on the maximum "
-            "cancellation fee of 2.75% (plus VAT).",
+            "These charges are currently not applicable.",
+            "A cancellation fee may apply if you withdraw your investment before the applicable period "
+            "(maximum 2.75% plus VAT). The EAC table above reflects the worst-case reduction in yield "
+            "where applicable. The cancellation fee falls away once the investor reaches age 55 or has "
+            "been a member for 5 or more years — the EAC table reflects this by showing 0.00% Other "
+            "for periods where no cancellation fee applies.",
         ]
     else:
         other_charges_text = [
-            "This fee is paid to GIB Financial Services for portfolio construction\u2026",
+            "These charges are currently not applicable.",
         ]
 
     fee_desc_items = []

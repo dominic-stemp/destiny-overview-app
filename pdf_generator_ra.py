@@ -426,7 +426,7 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
             "effect of all administration fees in the administration charge component in the EAC table.",
         ]),
         ("4.\u2002Other Charges", [
-            "This fee is paid to GIB Financial Services for portfolio construction\u2026",
+            "These charges are currently not applicable.",
         ]),
     ]:
         fee_desc_items.append(Paragraph(heading, S["numbered_heading"]))
