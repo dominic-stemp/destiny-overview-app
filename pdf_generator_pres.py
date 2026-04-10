@@ -350,15 +350,13 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
             ch_data = [[
                 Paragraph("Portfolio",  S["table_header"]),
                 Paragraph("Lump Sum %", S["table_header"]),
-                Paragraph("Monthly %",  S["table_header"]),
             ]]
             for _, row in active.iterrows():
                 ch_data.append([
-                    Paragraph(row["Portfolio"],                        S["table_cell"]),
-                    Paragraph(f"{row['Lump Sum %']:.1f}%",            S["table_cell_center"]),
-                    Paragraph(f"{row['Monthly Contribution %']:.1f}%", S["table_cell_center"]),
+                    Paragraph(row["Portfolio"],             S["table_cell"]),
+                    Paragraph(f"{row['Lump Sum %']:.1f}%", S["table_cell_center"]),
                 ])
-            ch_table = Table(ch_data, colWidths=[CONTENT_W - 60*mm, 30*mm, 30*mm])
+            ch_table = Table(ch_data, colWidths=[CONTENT_W - 30*mm, 30*mm])
             ch_table.setStyle(TableStyle([
                 ("BACKGROUND",    (0, 0), (-1, 0),  DARK_BLUE),
                 ("ROWBACKGROUNDS",(0, 1), (-1, -1), [WHITE, LIGHT_GREY]),
@@ -419,31 +417,35 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
         return f"{v:.2f}%" if v is not None else "N/A"
 
     def build_eac_table(rows, content_w):
-        header = [
-            Paragraph("",         S["table_header"]),
-            Paragraph("1 year",   S["table_header"]),
-            Paragraph("3 years",  S["table_header"]),
-            Paragraph("5 years",  S["table_header"]),
-            Paragraph("10 years", S["table_header"]),
-        ]
+        # Preservation uses 6 columns (split 5yr); check if y5pre exists in any row
+        has_split = any(r.get("y5pre") is not None for r in rows)
+        if has_split:
+            col_keys   = ["y1", "y3", "y5pre", "y5", "y10"]
+            col_labels = ["1 year", "3 years", "< 5 years", "5 years", "10 years"]
+            n_cols = 6
+        else:
+            col_keys   = ["y1", "y3", "y5", "y10"]
+            col_labels = ["1 year", "3 years", "5 years", "10 years"]
+            n_cols = 5
+
+        header = [Paragraph("", S["table_header"])] + [Paragraph(l, S["table_header"]) for l in col_labels]
         data = [header]
         for row in rows:
             if row["label"] == "Other":
-                vals = [row.get(k) for k in ("y1", "y3", "y5", "y10")]
+                vals = [row.get(k) for k in col_keys]
                 if all((v is None or v == 0.0) for v in vals):
                     continue
             is_total = row.get("is_total", False)
             cs = S["table_label_center"] if is_total else S["table_cell_center"]
-            data.append([
-                Paragraph(row["label"],        cs),
-                Paragraph(fmt(row.get("y1")),  cs),
-                Paragraph(fmt(row.get("y3")),  cs),
-                Paragraph(fmt(row.get("y5")),  cs),
-                Paragraph(fmt(row.get("y10")), cs),
-            ])
+            data.append(
+                [Paragraph(row["label"], cs)] +
+                [Paragraph(fmt(row.get(k)), cs) for k in col_keys]
+            )
         total_idx = len(data) - 1
-        col_w = content_w / 5
-        t = Table(data, colWidths=[col_w * 1.8, col_w * 0.8, col_w * 0.8, col_w * 0.8, col_w * 0.8])
+        label_w = content_w * 0.30
+        data_w  = (content_w - label_w) / (n_cols - 1)
+        col_widths = [label_w] + [data_w] * (n_cols - 1)
+        t = Table(data, colWidths=col_widths)
         t.setStyle(TableStyle([
             ("BACKGROUND",    (0, 0), (-1, 0),       DARK_BLUE),
             ("ROWBACKGROUNDS",(0, 1), (-1, total_idx - 1), [WHITE, LIGHT_GREY]),

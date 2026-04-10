@@ -133,10 +133,10 @@ def compute_eac_table(
     if fund_type == "RA":
         numeric_periods = [("1 year", 1), ("3 years", 3), ("5 years", 5), ("10 years", 10)]
     else:
-        numeric_periods = [("1 year", 1), ("3 years", 3), ("5 years", 5), ("10 years", 10)]
+        # Preservation: split 5yr into "< 5 years" (fee applies) and "5 years" (fee waived)
+        numeric_periods = [("1 year", 1), ("3 years", 3), ("< 5 years", 5), ("5 years", 5), ("10 years", 10)]
 
     all_columns = [label for label, _ in numeric_periods]
-    all_periods_n = [n for _, n in numeric_periods]
 
     # 7. Combined flat % for simulations
     combined_flat_pct = imc_pct + advice_pct + admin_pct
@@ -144,7 +144,7 @@ def compute_eac_table(
     # 8. Build per-column values
     imc_vals, advice_vals, admin_vals, other_vals = [], [], [], []
 
-    for n in all_periods_n:
+    for label, n in numeric_periods:
         if n is None:
             imc_vals.append(None); advice_vals.append(None)
             admin_vals.append(None); other_vals.append(None)
@@ -164,8 +164,14 @@ def compute_eac_table(
         admin_vals.append(round(admin_pct + 1e-12, 4))
 
         # Other = cancellation fee, but only if cancellation still applies at this period.
-        # Cancellation falls away once membership >= 5 years OR investor reaches age 55.
-        cancel_applies = (n < 5) and (age + n < 55)
+        # "< 5 years" column: fee applies (day before waiver). "5 years" column: fee waived.
+        # Also waived once investor reaches age 55 or period >= 5 years.
+        if label == "< 5 years":
+            # Day-before-5-year: cancellation still applies unless age 55 already reached
+            cancel_applies = (age + n < 55)
+        else:
+            cancel_applies = (n < 5) and (age + n < 55)
+
         if not cancel_applies:
             other_vals.append(0.0)
         elif use_riy_cancel:
@@ -217,6 +223,7 @@ def eac_table_to_rows(eac: dict, fund_type: str) -> list[dict]:
         "Next 1 year": "y1", "Next 3 years": "y3", "Next 5 years": "y5",
         "Next 10 years": "y10", "Age 55": "y55", "10 years": "y10",
         "1 year": "y1", "3 years": "y3", "5 years": "y5",
+        "< 5 years": "y5pre",
     }
     component_order = ["imc", "advice", "admin", "other", "total"]
     label_map = {

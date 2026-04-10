@@ -238,14 +238,11 @@ if fund == "Retirement Annuity":
 ifa_fee       = st.selectbox("IFA Fee (ex VAT)", ["0%", "0.25%", "0.35%", "0.5%", "0.75%"])
 ifa_fee_value = float(ifa_fee.replace("%", ""))
 
-if fund == "Preservation":
-    investment_option = st.selectbox(
-        "Investment Option", ["Lifestage", "Passive Lifestage"]
-    )
-else:
-    investment_option = st.selectbox(
-        "Investment Option", ["Lifestage", "Passive Lifestage", "Own Choice"]
-    )
+investment_option = st.selectbox(
+    "Investment Option", ["Lifestage", "Passive Lifestage", "Own Choice"]
+)
+
+is_ra = fund == "Retirement Annuity"
 
 # ----------------------------------------------------
 # UPFRONT FEE CALC + DISPLAY (Preservation only)
@@ -305,17 +302,28 @@ if investment_option == "Own Choice":
     allocations = []
     st.markdown("### Enter Allocations")
 
-    colA, colB, colC = st.columns([3, 1.2, 1.7])
-    colA.write("**Portfolio**")
-    colB.write("**Lump Sum %**")
-    colC.write("**Monthly Contribution %**")
+    if is_ra:
+        colA, colB, colC = st.columns([3, 1.2, 1.7])
+        colA.write("**Portfolio**")
+        colB.write("**Lump Sum %**")
+        colC.write("**Monthly Contribution %**")
+    else:
+        colA, colB = st.columns([3, 1.2])
+        colA.write("**Portfolio**")
+        colB.write("**Lump Sum %**")
 
     for portfolio in TIC_DF["Portfolio"]:
-        col1, col2, col3 = st.columns([3, 1.2, 1.7])
-        col1.write(f"**{portfolio}**")
-        lump_pct = col2.number_input("", min_value=0, max_value=100, step=1, format="%d", key=f"{portfolio}_l")
-        cont_pct = col3.number_input(" ", min_value=0, max_value=100, step=1, format="%d", key=f"{portfolio}_c")
-        tic      = float(TIC_DF.loc[TIC_DF["Portfolio"] == portfolio, "TIC"].iloc[0])
+        tic = float(TIC_DF.loc[TIC_DF["Portfolio"] == portfolio, "TIC"].iloc[0])
+        if is_ra:
+            col1, col2, col3 = st.columns([3, 1.2, 1.7])
+            col1.write(f"**{portfolio}**")
+            lump_pct = col2.number_input("", min_value=0, max_value=100, step=1, format="%d", key=f"{portfolio}_l")
+            cont_pct = col3.number_input(" ", min_value=0, max_value=100, step=1, format="%d", key=f"{portfolio}_c")
+        else:
+            col1, col2 = st.columns([3, 1.2])
+            col1.write(f"**{portfolio}**")
+            lump_pct = col2.number_input("", min_value=0, max_value=100, step=1, format="%d", key=f"{portfolio}_l")
+            cont_pct = 0
         allocations.append({
             "Portfolio":              portfolio,
             "TIC":                    tic,
@@ -325,20 +333,22 @@ if investment_option == "Own Choice":
 
     alloc_df = pd.DataFrame(allocations)
     lump_total = alloc_df["Lump Sum %"].sum()
-    cont_total  = alloc_df["Monthly Contribution %"].sum()
     if lump_total != 100:
         st.error(f"Lump Sum allocations must add up to 100% (currently {lump_total}%).")
-    if monthly_contribution > 0 and cont_total != 100:
-        st.error(f"Monthly Contribution allocations must add up to 100% (currently {cont_total}%).")
+    if is_ra and monthly_contribution > 0:
+        cont_total = alloc_df["Monthly Contribution %"].sum()
+        if cont_total != 100:
+            st.error(f"Monthly Contribution allocations must add up to 100% (currently {cont_total}%).")
     imc = investment_mgmt_from_alloc(alloc_df, estimated_lump_sum)
     st.write(f"**Investment Management Fee (%):** {imc:.4f}%")
-    st.dataframe(alloc_df.set_index("Portfolio"), hide_index=False)
+    if is_ra:
+        st.dataframe(alloc_df.set_index("Portfolio"), hide_index=False)
+    else:
+        st.dataframe(alloc_df[["Lump Sum %"]].rename_axis("Portfolio"), hide_index=False)
 
 # ----------------------------------------------------
 # EAC — build via shared calculator
 # ----------------------------------------------------
-is_ra = fund == "Retirement Annuity"
-
 # Build choice_allocations list for compute_eac_table
 if investment_option == "Own Choice" and alloc_df is not None:
     choice_allocs = [
@@ -402,10 +412,14 @@ eac_rows_no_cancel = None
 # ----------------------------------------------------
 st.markdown("<div class='section-heading'>Effective Annual Cost (EAC)</div>", unsafe_allow_html=True)
 
-def _rows_to_df(row_list, hide_zero_other=True):
+def _rows_to_df(row_list, hide_zero_other=True, has_split_5yr=False):
     """Convert eac_table_to_rows output to a display DataFrame."""
-    cols_order = ["y1", "y3", "y5", "y10"]
-    col_labels  = ["1 year", "3 years", "5 years", "10 years"]
+    if has_split_5yr:
+        cols_order = ["y1", "y3", "y5pre", "y5", "y10"]
+        col_labels  = ["1 year", "3 years", "< 5 years", "5 years", "10 years"]
+    else:
+        cols_order = ["y1", "y3", "y5", "y10"]
+        col_labels  = ["1 year", "3 years", "5 years", "10 years"]
     def fmt(v):
         return f"{v:.2f}%" if v is not None else "N/A"
     display = []
@@ -419,7 +433,7 @@ def _rows_to_df(row_list, hide_zero_other=True):
         display.append(row_dict)
     return pd.DataFrame(display)
 
-st.dataframe(_rows_to_df(eac_rows, hide_zero_other=True), hide_index=True, use_container_width=True)
+st.dataframe(_rows_to_df(eac_rows, hide_zero_other=True, has_split_5yr=not is_ra), hide_index=True, use_container_width=True)
 
 # ----------------------------------------------------
 # GENERATE PDF BUTTON
