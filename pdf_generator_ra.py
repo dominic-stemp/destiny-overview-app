@@ -339,11 +339,10 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
     eac_rows = field_values.get("EACRows", [])
 
     eac_header = [
-        Paragraph("",             S["table_header"]),
-        Paragraph("1 year",       S["table_header"]),
-        Paragraph("3 years",      S["table_header"]),
-        Paragraph("5 years",      S["table_header"]),
-        Paragraph("10 years",     S["table_header"]),
+        Paragraph("",         S["table_header"]),
+        Paragraph("1 year",   S["table_header"]),
+        Paragraph("3 years",  S["table_header"]),
+        Paragraph("5 years",  S["table_header"]),
     ]
     eac_data = [eac_header]
 
@@ -351,27 +350,24 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
         return f"{v:.2f}%" if v is not None else "N/A"
 
     for row in eac_rows:
-        # Hide Other row if all values are zero
         if row["label"] == "Other":
-            vals = [row.get(k) for k in ("y1", "y3", "y5", "y10")]
+            vals = [row.get(k) for k in ("y1", "y3", "y5")]
             if all((v is None or v == 0.0) for v in vals):
                 continue
         is_total = row.get("is_total", False)
         lbl_s = S["table_label_center"] if is_total else S["table_cell_center"]
-        val_s = S["table_label_center"] if is_total else S["table_cell_center"]
         eac_data.append([
-            Paragraph(row["label"],        lbl_s),
-            Paragraph(fmt(row.get("y1")),  val_s),
-            Paragraph(fmt(row.get("y3")),  val_s),
-            Paragraph(fmt(row.get("y5")),  val_s),
-            Paragraph(fmt(row.get("y10")), val_s),
+            Paragraph(row["label"],       lbl_s),
+            Paragraph(fmt(row.get("y1")), lbl_s),
+            Paragraph(fmt(row.get("y3")), lbl_s),
+            Paragraph(fmt(row.get("y5")), lbl_s),
         ])
 
     total_row_idx = len(eac_data) - 1
-    col_w = CONTENT_W / 5
+    col_w = CONTENT_W / 4
     eac_table = Table(
         eac_data,
-        colWidths=[col_w * 1.8, col_w * 0.8, col_w * 0.8, col_w * 0.8, col_w * 0.8]
+        colWidths=[col_w * 1.6, col_w * 0.8, col_w * 0.8, col_w * 0.8]
     )
     eac_table.setStyle(TableStyle([
         ("BACKGROUND",    (0, 0), (-1, 0),  DARK_BLUE),

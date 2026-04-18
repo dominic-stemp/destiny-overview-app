@@ -420,13 +420,13 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
         # Preservation uses 6 columns (split 5yr); check if y5pre exists in any row
         has_split = any(r.get("y5pre") is not None for r in rows)
         if has_split:
-            col_keys   = ["y1", "y3", "y5pre", "y5", "y10"]
-            col_labels = ["1 year", "3 years", "< 5 years", "5 years", "10 years"]
-            n_cols = 6
-        else:
-            col_keys   = ["y1", "y3", "y5", "y10"]
-            col_labels = ["1 year", "3 years", "5 years", "10 years"]
+            col_keys   = ["y1", "y3", "y5pre", "y5"]
+            col_labels = ["1 year", "3 years", "< 5 years", "5 years"]
             n_cols = 5
+        else:
+            col_keys   = ["y1", "y3", "y5"]
+            col_labels = ["1 year", "3 years", "5 years"]
+            n_cols = 4
 
         header = [Paragraph("", S["table_header"])] + [Paragraph(l, S["table_header"]) for l in col_labels]
         data = [header]

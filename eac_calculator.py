@@ -131,10 +131,10 @@ def compute_eac_table(
 
     # 6. Disclosure periods
     if fund_type == "RA":
-        numeric_periods = [("1 year", 1), ("3 years", 3), ("5 years", 5), ("10 years", 10)]
+        numeric_periods = [("1 year", 1), ("3 years", 3), ("5 years", 5)]
     else:
         # Preservation: split 5yr into "< 5 years" (fee applies) and "5 years" (fee waived)
-        numeric_periods = [("1 year", 1), ("3 years", 3), ("< 5 years", 5), ("5 years", 5), ("10 years", 10)]
+        numeric_periods = [("1 year", 1), ("3 years", 3), ("< 5 years", 5), ("5 years", 5)]
 
     all_columns = [label for label, _ in numeric_periods]
 

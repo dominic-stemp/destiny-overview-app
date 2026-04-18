@@ -344,7 +344,8 @@ if investment_option == "Own Choice":
     if is_ra:
         st.dataframe(alloc_df.set_index("Portfolio"), hide_index=False)
     else:
-        st.dataframe(alloc_df[["Lump Sum %"]].rename_axis("Portfolio"), hide_index=False)
+        display_df = alloc_df[["Portfolio", "Lump Sum %"]].set_index("Portfolio")
+        st.dataframe(display_df, hide_index=False)
 
 # ----------------------------------------------------
 # EAC — build via shared calculator
@@ -415,11 +416,11 @@ st.markdown("<div class='section-heading'>Effective Annual Cost (EAC)</div>", un
 def _rows_to_df(row_list, hide_zero_other=True, has_split_5yr=False):
     """Convert eac_table_to_rows output to a display DataFrame."""
     if has_split_5yr:
-        cols_order = ["y1", "y3", "y5pre", "y5", "y10"]
-        col_labels  = ["1 year", "3 years", "< 5 years", "5 years", "10 years"]
+        cols_order = ["y1", "y3", "y5pre", "y5"]
+        col_labels  = ["1 year", "3 years", "< 5 years", "5 years"]
     else:
-        cols_order = ["y1", "y3", "y5", "y10"]
-        col_labels  = ["1 year", "3 years", "5 years", "10 years"]
+        cols_order = ["y1", "y3", "y5"]
+        col_labels  = ["1 year", "3 years", "5 years"]
     def fmt(v):
         return f"{v:.2f}%" if v is not None else "N/A"
     display = []
