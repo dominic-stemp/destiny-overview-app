@@ -94,7 +94,7 @@ def compute_eac_table(
     admin_base_ex_vat: float = 0.75,
     tic_map: dict | None = None,
     include_upfront_in_eac: bool = False,
-    upfront_fee_incl_vat: float = 0.0,        # Option 1: goes into Admin row
+    upfront_fee_incl_vat: float = 0.0,        # Option 1: goes into Advice row
     cancellation_fee_incl_vat: float = 0.0,   # Option 2: goes into Other row
     lump_sum: float = 0.0,
     monthly_contribution: float = 0.0,
@@ -133,8 +133,12 @@ def compute_eac_table(
     if fund_type == "RA":
         numeric_periods = [("1 year", 1), ("3 years", 3), ("5 years", 5)]
     else:
-        # Preservation: split 5yr into "< 5 years" (fee applies) and "5 years" (fee waived)
-        numeric_periods = [("1 year", 1), ("3 years", 3), ("< 5 years", 5), ("5 years", 5)]
+        # Preservation: "< 5 years" = worst-case with fee; "Age 65" = horizon to retirement
+        years_to_65 = max(1, int(65 - age))
+        age65_label = "Age 65" if age < 65 else None
+        numeric_periods = [("1 year", 1), ("3 years", 3), ("< 5 years", 5)]
+        if age65_label:
+            numeric_periods.append((age65_label, years_to_65))
 
     all_columns = [label for label, _ in numeric_periods]
 
@@ -163,12 +167,14 @@ def compute_eac_table(
         # Admin = base only
         admin_vals.append(round(admin_pct + 1e-12, 4))
 
-        # Other = cancellation fee, but only if cancellation still applies at this period.
-        # "< 5 years" column: fee applies (day before waiver). "5 years" column: fee waived.
-        # Also waived once investor reaches age 55 or period >= 5 years.
+        # Other = cancellation fee logic:
+        # "< 5 years": fee still applies (unless already age 55+)
+        # "Age 65": fee has lapsed (past 5 years / retirement horizon)
+        # All other periods: fee applies only if within 5 years AND under 55
         if label == "< 5 years":
-            # Day-before-5-year: cancellation still applies unless age 55 already reached
             cancel_applies = (age + n < 55)
+        elif label == "Age 65":
+            cancel_applies = False
         else:
             cancel_applies = (n < 5) and (age + n < 55)
 
@@ -223,7 +229,7 @@ def eac_table_to_rows(eac: dict, fund_type: str) -> list[dict]:
         "Next 1 year": "y1", "Next 3 years": "y3", "Next 5 years": "y5",
         "Next 10 years": "y10", "Age 55": "y55", "10 years": "y10",
         "1 year": "y1", "3 years": "y3", "5 years": "y5",
-        "< 5 years": "y5pre",
+        "< 5 years": "y5pre", "Age 65": "y65",
     }
     component_order = ["imc", "advice", "admin", "other", "total"]
     label_map = {

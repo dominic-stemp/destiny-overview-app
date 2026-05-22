@@ -417,12 +417,19 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
         return f"{v:.2f}%" if v is not None else "N/A"
 
     def build_eac_table(rows, content_w):
-        # Preservation uses 6 columns (split 5yr); check if y5pre exists in any row
+        # Preservation: "< 5 years" + "Age 65"; check which columns are present
+        has_y65   = any(r.get("y65") is not None for r in rows)
         has_split = any(r.get("y5pre") is not None for r in rows)
-        if has_split:
-            col_keys   = ["y1", "y3", "y5pre", "y5"]
-            col_labels = ["1 year", "3 years", "< 5 years", "5 years"]
+        years_to_65 = max(1, int(65 - inv_age)) if inv_age < 65 else None
+        age65_label = "Age 65"
+        if has_split and has_y65:
+            col_keys   = ["y1", "y3", "y5pre", "y65"]
+            col_labels = ["1 year", "3 years", "< 5 years", age65_label]
             n_cols = 5
+        elif has_split:
+            col_keys   = ["y1", "y3", "y5pre"]
+            col_labels = ["1 year", "3 years", "< 5 years"]
+            n_cols = 4
         else:
             col_keys   = ["y1", "y3", "y5"]
             col_labels = ["1 year", "3 years", "5 years"]

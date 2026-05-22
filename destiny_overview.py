@@ -413,11 +413,11 @@ eac_rows_no_cancel = None
 # ----------------------------------------------------
 st.markdown("<div class='section-heading'>Effective Annual Cost (EAC)</div>", unsafe_allow_html=True)
 
-def _rows_to_df(row_list, hide_zero_other=True, has_split_5yr=False):
+def _rows_to_df(row_list, hide_zero_other=True, has_split_5yr=False, age65_label="Age 65"):
     """Convert eac_table_to_rows output to a display DataFrame."""
     if has_split_5yr:
-        cols_order = ["y1", "y3", "y5pre", "y5"]
-        col_labels  = ["1 year", "3 years", "< 5 years", "5 years"]
+        cols_order = ["y1", "y3", "y5pre", "y65"]
+        col_labels  = ["1 year", "3 years", "< 5 years", age65_label]
     else:
         cols_order = ["y1", "y3", "y5"]
         col_labels  = ["1 year", "3 years", "5 years"]
@@ -434,7 +434,8 @@ def _rows_to_df(row_list, hide_zero_other=True, has_split_5yr=False):
         display.append(row_dict)
     return pd.DataFrame(display)
 
-st.dataframe(_rows_to_df(eac_rows, hide_zero_other=True, has_split_5yr=not is_ra), hide_index=True, use_container_width=True)
+_age65_col_label = "Age 65"
+st.dataframe(_rows_to_df(eac_rows, hide_zero_other=True, has_split_5yr=not is_ra, age65_label=_age65_col_label), hide_index=True, use_container_width=True)
 
 # ----------------------------------------------------
 # GENERATE PDF BUTTON
