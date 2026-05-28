@@ -181,7 +181,7 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
     for b in [
         "You can use the Destiny Retirement Annuity Fund (the Fund) to save for retirement in a tax-efficient manner.",
         "All lump sum and regular investments in the Destiny Retirement Annuity are split between the retirement component and the savings component. We invest one-third of the investment amount in your savings component and two-thirds in your retirement component.",
-        "You may only access your retirement component money when you retire. You cannot retire before the age of 55 unless you are permanently disabled, or you emigrate or if your investment value across all your investments in the Fund is less than R15,000.",
+        "You may only access your retirement component money when you retire. You cannot retire before the age of 55 unless you are permanently disabled, or you emigrate or if your investment value across all your investments in the Fund is less than R15,000, or in certain circumstances permitted under applicable legislation.",
         "If you are transferring a compulsory investment to the Retirement Annuity it could include a vested component with vested benefits and/or non-vested benefits, a retirement component, and a savings component. The transferring fund will indicate the components that are included. The investment and fee account selection of this proposal will apply to all components.",
         "When you retire a maximum of one-third of the market value of your investment can be taken as cash. The remainder must be used to purchase an income-providing vehicle such as the Destiny Living Annuity.",
         "If you have not agreed to invest according to the LifeStage Model as recommended by the Board of Trustees then you are responsible for ensuring that the Portfolio you select meets your investment needs and risk profile.",
@@ -225,7 +225,7 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
     ls_block.append(hr())
     ls_block.append(Paragraph(
         "The Destiny Retirement Annuity\u2019s default investment portfolio is the Destiny LifeStage Model. "
-        "Unless you advise us as per your portfolio selection, you will automatically be invested in the Life Stage Model. "
+        "Unless you advise us of a specific portfolio selection, you will automatically be invested in the Life Stage Model. "
         "The Model invests your assets according to your age and assumes a retirement age of 65. "
         "Based on the information per this overview, your Investment Portfolio at inception will be the:",
         S["body"]
@@ -349,18 +349,22 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
     def fmt(v):
         return f"{v:.2f}%" if v is not None else "N/A"
 
+    label_map = {
+        "Investment Management": "1. Investment Management Charges",
+        "Advice":                "2. Advice Charges",
+        "Admin":                 "3. Administration",
+        "Other":                 "4. Other",
+        "Effective Annual Cost": "Effective Annual Cost",
+    }
     for row in eac_rows:
-        if row["label"] == "Other":
-            vals = [row.get(k) for k in ("y1", "y3", "y5")]
-            if all((v is None or v == 0.0) for v in vals):
-                continue
         is_total = row.get("is_total", False)
-        lbl_s = S["table_label_center"] if is_total else S["table_cell_center"]
+        lbl_s = S["table_label"] if is_total else S["table_cell"]
+        display_label = label_map.get(row["label"], row["label"])
         eac_data.append([
-            Paragraph(row["label"],       lbl_s),
-            Paragraph(fmt(row.get("y1")), lbl_s),
-            Paragraph(fmt(row.get("y3")), lbl_s),
-            Paragraph(fmt(row.get("y5")), lbl_s),
+            Paragraph(display_label,      lbl_s),
+            Paragraph(fmt(row.get("y1")), S["table_cell_center"]),
+            Paragraph(fmt(row.get("y3")), S["table_cell_center"]),
+            Paragraph(fmt(row.get("y5")), S["table_cell_center"]),
         ])
 
     total_row_idx = len(eac_data) - 1
@@ -378,6 +382,7 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
         ("INNERGRID",     (0, 0), (-1, -1), 0.5, MID_GREY),
         ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
         ("ALIGN",         (0, 0), (-1, -1), "CENTER"),
+        ("ALIGN",         (0, 0), (0, -1),  "LEFT"),
         ("TOPPADDING",    (0, 0), (-1, -1), 5),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
         ("LEFTPADDING",   (0, 0), (-1, -1), 5),
@@ -389,7 +394,7 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
     fee_desc_items = []
     for heading, body_text in [
         ("1.\u2002Investment Management Charges", [
-            "The next table shows the investment fund manager initial and ongoing fees, the investment fund total "
+            "The above table shows the investment fund manager initial and ongoing fees, the investment fund total "
             "investment charges (TIC) and the investment fund manager rebate for the investment funds that you chose. "
             "An estimate of the total fee that you will pay for investment management is the fund TIC less any rebate, "
             "plus the effect of any initial fee. This is the calculation we use for the figure we show in the EAC table.",
@@ -405,11 +410,6 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
             "not available, we use the total expense ratio (TER), which is the TIC excluding transaction costs. Where "
             "neither the TIC nor the TER is available, we use the investment manager\u2019s ongoing fee.",
 
-            "For some investment funds, we perform specialised administrative functions on behalf of the investment "
-            "managers. In certain agreed circumstances, the investment manager refunds part of the investment fund "
-            "manager ongoing fee to us \u2013 this is called a rebate. We pass all rebates on all investment funds "
-            "back to you. The quoted rebates are at the discretion of the fund manager who can change or withdraw it "
-            "at any time.",
         ]),
         ("2.\u2002Advice Charges", [
             "Your financial adviser will receive a yearly ongoing fee, illustrated above, of the market value of your "
@@ -458,19 +458,19 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
         "\u2013 The unit price that will apply is the price at which the Investment Administrator completes the "
         "purchase of units.",
 
-        "\u2013 You have 14 days after receipt of the investment confirmation from the Administrator, to report any "
+        "\u2013 You have 14 days after receipt of the investment confirmation from the Administrator to report any "
         "errors to the administrator. The administrator reserves the right to determine whether it has acted "
         "incorrectly on the investor\u2019s instruction.",
 
         "\u2013 A switch instruction between investment portfolios will take effect within 7 working days after "
         "receipt thereof.",
 
-        "\u2013 A withdrawal notification in the prescribed format will take a maximum of ten business days to "
+        "\u2013 A withdrawal notification in the prescribed format will take a minimum of ten business days to "
         "process.",
 
         "In the event of your death before retirement, the trustees of the Fund have the discretion, in terms of "
         "Section 37C of the Pension Funds Act 24 of 1956 to apportion the benefit that may become payable between "
-        "beneficiaries nominated by you and your dependants. Subject to legislation, the beneficiaries and "
+        "beneficiaries nominated by you, and your dependants. Subject to legislation, the beneficiaries and "
         "dependants may have the option of receiving their benefit in cash and/or as a pension. These benefits may "
         "qualify for tax concessions up to certain limits.",
 

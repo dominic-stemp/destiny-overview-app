@@ -270,7 +270,7 @@ if fund == "Preservation":
             st.write(
                 "No initial fee is charged. However, if you withdraw funds, "
                 "a cancellation fee applies based on your period of membership. "
-                "The cancellation fee falls away once the investor reaches age 55 or has been a member for 5 or more years."
+                "The cancellation fee falls away once you reach age 55 or have been a member for 5 or more years."
             )
             opt2_data = {
                 "Period of Membership": ["One year or less", "One to Three years", "Three to Five years", "Five years or more"],

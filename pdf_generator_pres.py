@@ -263,7 +263,7 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
             ))
         else:
             story.append(Paragraph(
-                "An upfront fee applies on the initial lump sum investment, as per the fee schedule, "
+                "An upfront fee of 2.75% excluding VAT applies on the initial investment, "
                 "capped at R7,500 (excl. VAT) / R8,625 (incl. VAT).",
                 S["body"]
             ))
@@ -279,7 +279,7 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
             story.append(Paragraph(
                 "No upfront fee is charged. However, if you withdraw funds, a cancellation fee applies "
                 "based on your period of membership as per the table below. "
-                "The cancellation fee falls away once the investor reaches age 55 or has been a member for 5 or more years.",
+                "The cancellation fee falls away once you reach age 55 or have been a member for 5 or more years.",
                 S["body"]
             ))
             story.append(Spacer(1, 3*mm))
@@ -304,7 +304,7 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
     ls_block.append(hr())
     ls_block.append(Paragraph(
         "The Destiny Retirement Funds\u2019 default investment portfolio is the Destiny LifeStage Model. "
-        "Unless you advise us as per your portfolio selection, you will automatically be invested in the Life Stage Model. "
+        "Unless you advise us of a specific portfolio selection, you will automatically be invested in the Life Stage Model. "
         "The Model invests your assets according to your age and assumes a retirement age of 65. "
         "Based on the information as per this overview, your Investment Portfolio at inception will be the:",
         S["body"]
@@ -435,18 +435,22 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
             col_labels = ["1 year", "3 years", "5 years"]
             n_cols = 4
 
+        label_map = {
+            "Investment Management": "1. Investment Management Charges",
+            "Advice":                "2. Advice Charges",
+            "Admin":                 "3. Administration",
+            "Other":                 "4. Other",
+            "Effective Annual Cost": "Effective Annual Cost",
+        }
         header = [Paragraph("", S["table_header"])] + [Paragraph(l, S["table_header"]) for l in col_labels]
         data = [header]
         for row in rows:
-            if row["label"] == "Other":
-                vals = [row.get(k) for k in col_keys]
-                if all((v is None or v == 0.0) for v in vals):
-                    continue
             is_total = row.get("is_total", False)
-            cs = S["table_label_center"] if is_total else S["table_cell_center"]
+            lbl_s = S["table_label"] if is_total else S["table_cell"]
+            display_label = label_map.get(row["label"], row["label"])
             data.append(
-                [Paragraph(row["label"], cs)] +
-                [Paragraph(fmt(row.get(k)), cs) for k in col_keys]
+                [Paragraph(display_label, lbl_s)] +
+                [Paragraph(fmt(row.get(k)), S["table_cell_center"]) for k in col_keys]
             )
         total_idx = len(data) - 1
         label_w = content_w * 0.30
@@ -462,6 +466,7 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
             ("INNERGRID",     (0, 0), (-1, -1), 0.5, MID_GREY),
             ("VALIGN",        (0, 0), (-1, -1), "MIDDLE"),
             ("ALIGN",         (0, 0), (-1, -1), "CENTER"),
+            ("ALIGN",         (0, 0), (0, -1),  "LEFT"),
             ("TOPPADDING",    (0, 0), (-1, -1), 5),
             ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
             ("LEFTPADDING",   (0, 0), (-1, -1), 5),
@@ -482,8 +487,8 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
             "These charges are currently not applicable.",
             "A cancellation fee may apply if you withdraw your investment before the applicable period "
             "(maximum 2.75% plus VAT). The EAC table above reflects the worst-case reduction in yield "
-            "where applicable. The cancellation fee falls away once the investor reaches age 55 or has "
-            "been a member for 5 or more years — the EAC table reflects this by showing 0.00% Other "
+            "where applicable. The cancellation fee falls away once you reach age 55 or have been a member "
+            "for 5 or more years — the EAC table reflects this by showing 0.00% Other "
             "for periods where no cancellation fee applies.",
         ]
     else:
@@ -494,7 +499,7 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
     fee_desc_items = []
     for heading, body_texts in [
         ("1.\u2002Investment Management Charges", [
-            "The next table shows the investment fund manager initial and ongoing fees, the investment fund total "
+            "The above table shows the investment fund manager initial and ongoing fees, the investment fund total "
             "investment charges (TIC) and the investment fund manager rebate for the investment funds that you chose. "
             "An estimate of the total fee that you will pay for investment management is the fund TIC less any rebate, "
             "plus the effect of any initial fee. This is the calculation we use for the figure we show in the EAC table.",
@@ -510,11 +515,6 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
             "not available, we use the total expense ratio (TER), which is the TIC excluding transaction costs. Where "
             "neither the TIC nor the TER is available, we use the investment manager\u2019s ongoing fee.",
 
-            "For some investment funds, we perform specialised administrative functions on behalf of the investment "
-            "managers. In certain agreed circumstances, the investment manager refunds part of the investment fund "
-            "manager ongoing fee to us \u2013 this is called a rebate. We pass all rebates on all investment funds "
-            "back to you. The quoted rebates are at the discretion of the fund manager who can change or withdraw it "
-            "at any time.",
         ]),
         ("2.\u2002Advice Charges", [
             "Your financial adviser will receive a yearly ongoing fee, illustrated above, of the market value of your "
@@ -560,19 +560,19 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
         "\u2013 The unit price that will apply is the price at which the Investment Administrator completes the "
         "purchase of units.",
 
-        "\u2013 You have 14 days after receipt of the investment confirmation from the Administrator, to report "
+        "\u2013 You have 14 days after receipt of the investment confirmation from the Administrator to report "
         "any errors to the administrator. The administrator reserves the right to determine whether it has acted "
         "incorrectly on the investor\u2019s instruction.",
 
         "\u2013 A switch instruction between investment portfolios will take effect within 7 working days after "
         "receipt thereof.",
 
-        "\u2013 A withdrawal notification in the prescribed format will take a maximum of ten business days to "
+        "\u2013 A withdrawal notification in the prescribed format will take a minimum of ten business days to "
         "process.",
 
         "In the event of your death before retirement, the trustees of the Fund have the discretion, in terms of "
         "Section 37C of the Pension Funds Act 24 of 1956, to apportion the benefit that may become payable "
-        "between beneficiaries nominated by you and your dependants. Subject to legislation, the beneficiaries "
+        "between beneficiaries nominated by you, and your dependants. Subject to legislation, the beneficiaries "
         "and dependants may have the option of receiving their benefit in cash and/or as a pension. These "
         "benefits may qualify for tax concessions up to certain limits.",
 
