@@ -214,11 +214,12 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
     story.append(Spacer(1, 2*mm))
 
     for b in [
-        "You can use the Destiny Preservation Funds (the Funds) to preserve your existing retirement savings from a Pension or Provident Fund.",
+        "The Retirement Preservation Option provides a tax-efficient way to preserve your employer retirement fund benefits when leaving your employer, while also allowing you to transfer in existing preservation fund benefits.",
         "You may also use the Destiny Preservation Funds to preserve retirement savings from another Preservation Fund.",
-        "You may be allowed to make a once-off partial or full withdrawal before retirement. This is subject to the restrictions of the transferring fund and legislation/regulations.",
+        "You could have a vested component, with vested and/or non-vested benefits, a retirement component, and a savings component within your investment.",
         "You cannot retire from the Fund before age 55 unless you are permanently disabled.",
-        "When you retire from the Destiny Preservation Pension Fund, a maximum of one-third of your investment can be taken as cash. The remainder must be used to purchase an annuity such as the Destiny Living Annuity. The amount taken in cash is taxable.",
+        "<b>Access pre-retirement</b><br/>You may make one partial or full withdrawal from your vested and non-vested components before reaching normal retirement age. Thereafter, you may only make a withdrawal once you have formally emigrated for a period of three years. You may make one full or partial withdrawal from the Savings component of at least R2 000 from your savings component each tax year. Withdrawals made before retirement will be taxed at your marginal tax rate.",
+        "<b>Access at retirement</b><br/>You can take up to 100% of your vested component as a lump sum when you retire. You can take up to one-third of your non-vested component as a lump sum when you retire. You can take up to 100% of your savings component as a lump sum when you retire. You must use the balance from all components, plus 100% of your retirement component, to purchase an annuity when you retire. If the combined value of two-thirds of the vested component: non-vested benefit and the retirement components is less than the minimum prescribed amount at the time, you can take the full amount as a lump sum at retirement.",
         "If you have not agreed to invest according to the LifeStage Model as recommended by the Board of Trustees then you are responsible for ensuring that the Portfolio you select meets your investment needs and risk profile.",
         "The return on your investment is not guaranteed. As the market value of your investment may change, you carry the risk of losing.",
         "Once your investment has been processed, there is no cooling-off period and your investment cannot be cancelled. However, you may transfer your investment to another preservation fund or employer fund registered under the provisions of the Pension Funds Act (1956).",
