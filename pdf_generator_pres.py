@@ -189,9 +189,9 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
     # --------------------------------------------------
     # LOGO
     # --------------------------------------------------
-    logo_path = "destiny_logo.png"
+    logo_path = "assets/logo_destiny_preservation.png"
     if not os.path.exists(logo_path):
-        logo_path = "assets/logo_destiny.png"
+        logo_path = "destiny_logo.png"
 
     if os.path.exists(logo_path):
         logo = Image(logo_path, width=50*mm, height=18*mm, kind="proportional")
@@ -203,7 +203,7 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
     # --------------------------------------------------
     # PAGE 1 — TITLE + INTRO BULLETS
     # --------------------------------------------------
-    story.append(Paragraph("Destiny Preservation Funds", S["title_main"]))
+    story.append(Paragraph("Destiny Retirement Preservation Fund", S["title_main"]))
     story.append(Paragraph("Investment Overview", S["title_sub"]))
     story.append(hr(thickness=1.5, color=GOLD, space_before=2, space_after=8))
 
@@ -541,7 +541,7 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
     story.append(hr())
 
     for note in [
-        "The Funds are approved preservation funds administered by GIB Financial Services (Pty) Limited "
+        "The Fund is an approved preservation fund administered by GIB Financial Services (Pty) Limited "
         "(\u201cthe Administrator\u201d), an approved fund administrator and an authorised financial services "
         "provider. The Administrator holds professional indemnity and fidelity insurance cover.",
 
@@ -577,7 +577,7 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
         "benefits may qualify for tax concessions up to certain limits.",
 
         "You may transfer your investment in the Fund to another Preservation Fund. These transfers are subject "
-        "to the requirements of the Destiny Preservation Funds, the fund you transfer to and legislation at the "
+        "to the requirements of the Destiny Retirement Preservation Fund, the fund you transfer to and legislation at the "
         "time.",
     ]:
         story.append(Paragraph(note, S["body"]))
@@ -619,8 +619,8 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
     half = (CONTENT_W - 6*mm) / 2
     contact_table = Table([[
         [
-            Paragraph("Destiny Preservation Funds",           S["contact_heading"]),
-            Paragraph("FSCA registration Number 12/8/38116/R",S["contact_body"]),
+            Paragraph("Destiny Retirement Preservation Fund", S["contact_heading"]),
+            Paragraph("FSCA registration Number 12/8/38217",  S["contact_body"]),
             Paragraph("P O Box 3211, Houghton, 2041",         S["contact_body"]),
             Paragraph("Telephone: 0860 00FUND (3863)",        S["contact_body"]),
             Paragraph("rfs@gib.co.za",                        S["contact_body"]),
