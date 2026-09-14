@@ -598,19 +598,30 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
         S["body_left"]
     ))
     story.append(Spacer(1, 4*mm))
-    sig_data = [[
-        Paragraph("Signed at", S["signature_label"]),
-        Paragraph("",          S["signature_label"]),
-        Paragraph("Date",      S["signature_label"]),
-        Paragraph("",          S["signature_label"]),
-    ]]
-    sig_table = Table(sig_data, colWidths=[20*mm, 80*mm, 15*mm, 55*mm])
+    sig_data = [
+        [
+            Paragraph("Signature", S["signature_label"]),
+            Paragraph("",          S["signature_label"]),
+            Paragraph("Date",      S["signature_label"]),
+            Paragraph("",          S["signature_label"]),
+        ],
+        [
+            Paragraph("Signed at", S["signature_label"]),
+            Paragraph("",          S["signature_label"]),
+            Paragraph("",          S["signature_label"]),
+            Paragraph("",          S["signature_label"]),
+        ],
+    ]
+    sig_table = Table(sig_data, colWidths=[20*mm, 80*mm, 10*mm, 60*mm])
     sig_table.setStyle(TableStyle([
         ("LINEBELOW",     (1, 0), (1, 0), 0.5, BLACK),
         ("LINEBELOW",     (3, 0), (3, 0), 0.5, BLACK),
+        ("LINEBELOW",     (1, 1), (1, 1), 0.5, BLACK),
         ("VALIGN",        (0, 0), (-1, -1), "BOTTOM"),
-        ("TOPPADDING",    (0, 0), (-1, -1), 0),
+        ("TOPPADDING",    (0, 1), (-1, 1), 4),
+        ("TOPPADDING",    (0, 0), (-1, 0), 0),
         ("BOTTOMPADDING", (0, 0), (-1, -1), 2),
+        ("RIGHTPADDING",  (2, 0), (2, 0), 2),
     ]))
     story.append(sig_table)
     story.append(Spacer(1, 4*mm))
