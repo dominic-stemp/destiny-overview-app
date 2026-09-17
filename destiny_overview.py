@@ -85,7 +85,7 @@ TIC_DATA = {
         "Destiny Passive Conservative Portfolio",
         "Destiny Passive Defensive Portfolio",
     ],
-    "TIC": [0.89, 0.83, 0.74, 0.63, 0.76, 0.80, 0.23, 0.28, 0.26, 0.25, 0.23],
+    "TIC": [1.14, 1.05, 0.94, 0.78, 1.24, 1.09, 0.23, 0.27, 0.26, 0.25, 0.23],
 }
 TIC_DF = pd.DataFrame(TIC_DATA)
 

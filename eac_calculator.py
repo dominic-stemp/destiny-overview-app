@@ -7,14 +7,14 @@ import math
 # TIC MAP
 # ----------------------------------------------------
 TIC_MAP: dict[str, float] = {
-    "Destiny Market Enhanced Portfolio":          0.89,
-    "Destiny Moderate Portfolio":                 0.83,
-    "Destiny Conservative Portfolio":             0.74,
-    "Destiny Defensive Portfolio":                0.63,
-    "Destiny Global Enhanced Portfolio":          0.76,
-    "Destiny Sharia Portfolio":                   0.80,
+    "Destiny Market Enhanced Portfolio":          1.14,
+    "Destiny Moderate Portfolio":                 1.05,
+    "Destiny Conservative Portfolio":             0.94,
+    "Destiny Defensive Portfolio":                0.78,
+    "Destiny Global Enhanced Portfolio":          1.24,
+    "Destiny Sharia Portfolio":                   1.09,
     "Destiny Money Market Portfolio":             0.23,
-    "Destiny Passive Market Enhanced Portfolio":  0.28,
+    "Destiny Passive Market Enhanced Portfolio":  0.27,
     "Destiny Passive Moderate Portfolio":         0.26,
     "Destiny Passive Conservative Portfolio":     0.25,
     "Destiny Passive Defensive Portfolio":        0.23,
