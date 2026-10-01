@@ -71,6 +71,15 @@ def make_styles():
         "table_cell_center", fontName="Helvetica", fontSize=9,
         textColor=BLACK, leading=12, alignment=TA_CENTER,
     )
+    styles["table_sub_label"] = ParagraphStyle(
+        "table_sub_label", fontName="Helvetica", fontSize=8.5,
+        textColor=colors.HexColor("#555555"), leading=12,
+        alignment=TA_LEFT, leftIndent=8,
+    )
+    styles["table_sub_cell_center"] = ParagraphStyle(
+        "table_sub_cell_center", fontName="Helvetica", fontSize=8.5,
+        textColor=colors.HexColor("#555555"), leading=12, alignment=TA_CENTER,
+    )
     styles["table_label"] = ParagraphStyle(
         "table_label", fontName="Helvetica-Bold", fontSize=9,
         textColor=BLACK, leading=12, alignment=TA_LEFT,
@@ -351,20 +360,37 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
 
     label_map = {
         "Investment Management": "1. Investment Management Charges",
+        "Fixed / base costs":    "Fixed / base costs",
+        "Variable costs":        "Variable costs",
         "Advice":                "2. Advice Charges",
         "Admin":                 "3. Administration",
         "Other":                 "4. Other",
         "Effective Annual Cost": "Effective Annual Cost",
     }
+    sub_row_idxs = []
+    non_sub_toggle = 0
+    row_bg_cmds = []
     for row in eac_rows:
         is_total = row.get("is_total", False)
-        lbl_s = S["table_label"] if is_total else S["table_cell"]
+        is_sub   = row.get("is_sub", False)
+        row_idx  = len(eac_data)
+        if is_sub:
+            lbl_s = S["table_sub_label"]
+            val_s = S["table_sub_cell_center"]
+            sub_row_idxs.append(row_idx)
+        else:
+            lbl_s = S["table_label"] if is_total else S["table_cell"]
+            val_s = S["table_cell_center"]
+            if not is_total:
+                row_bg_cmds.append(("BACKGROUND", (0, row_idx), (-1, row_idx),
+                                     WHITE if non_sub_toggle % 2 == 0 else LIGHT_GREY))
+                non_sub_toggle += 1
         display_label = label_map.get(row["label"], row["label"])
         eac_data.append([
             Paragraph(display_label,      lbl_s),
-            Paragraph(fmt(row.get("y1")), S["table_cell_center"]),
-            Paragraph(fmt(row.get("y3")), S["table_cell_center"]),
-            Paragraph(fmt(row.get("y5")), S["table_cell_center"]),
+            Paragraph(fmt(row.get("y1")), val_s),
+            Paragraph(fmt(row.get("y3")), val_s),
+            Paragraph(fmt(row.get("y5")), val_s),
         ])
 
     total_row_idx = len(eac_data) - 1
@@ -373,9 +399,11 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
         eac_data,
         colWidths=[col_w * 1.6, col_w * 0.8, col_w * 0.8, col_w * 0.8]
     )
+    sub_bg_cmds = [("BACKGROUND", (0, i), (-1, i), LIGHT_GREY) for i in sub_row_idxs]
     eac_table.setStyle(TableStyle([
         ("BACKGROUND",    (0, 0), (-1, 0),  DARK_BLUE),
-        ("ROWBACKGROUNDS",(0, 1), (-1, total_row_idx - 1), [WHITE, LIGHT_GREY]),
+        *row_bg_cmds,
+        *sub_bg_cmds,
         ("BACKGROUND",    (0, total_row_idx), (-1, total_row_idx), LIGHT_GREY),
         ("FONTNAME",      (0, total_row_idx), (-1, total_row_idx), "Helvetica-Bold"),
         ("BOX",           (0, 0), (-1, -1), 0.5, MID_GREY),

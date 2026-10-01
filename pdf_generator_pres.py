@@ -72,6 +72,15 @@ def make_styles():
         "table_cell_center", fontName="Helvetica", fontSize=9,
         textColor=BLACK, leading=12, alignment=TA_CENTER,
     )
+    styles["table_sub_label"] = ParagraphStyle(
+        "table_sub_label", fontName="Helvetica", fontSize=8.5,
+        textColor=colors.HexColor("#555555"), leading=12,
+        alignment=TA_LEFT, leftIndent=8,
+    )
+    styles["table_sub_cell_center"] = ParagraphStyle(
+        "table_sub_cell_center", fontName="Helvetica", fontSize=8.5,
+        textColor=colors.HexColor("#555555"), leading=12, alignment=TA_CENTER,
+    )
     styles["table_label"] = ParagraphStyle(
         "table_label", fontName="Helvetica-Bold", fontSize=9,
         textColor=BLACK, leading=12, alignment=TA_LEFT,
@@ -437,6 +446,8 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
 
         label_map = {
             "Investment Management": "1. Investment Management Charges",
+            "Fixed / base costs":    "Fixed / base costs",
+            "Variable costs":        "Variable costs",
             "Advice":                "2. Advice Charges",
             "Admin":                 "3. Administration",
             "Other":                 "4. Other",
@@ -444,22 +455,39 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
         }
         header = [Paragraph("", S["table_header"])] + [Paragraph(l, S["table_header"]) for l in col_labels]
         data = [header]
+        sub_row_idxs = []
+        non_sub_toggle = 0
+        row_bg_cmds = []
         for row in rows:
             is_total = row.get("is_total", False)
-            lbl_s = S["table_label"] if is_total else S["table_cell"]
+            is_sub   = row.get("is_sub", False)
+            row_idx  = len(data)
+            if is_sub:
+                lbl_s  = S["table_sub_label"]
+                val_s  = S["table_sub_cell_center"]
+                sub_row_idxs.append(row_idx)
+            else:
+                lbl_s = S["table_label"] if is_total else S["table_cell"]
+                val_s = S["table_cell_center"]
+                if not is_total:
+                    row_bg_cmds.append(("BACKGROUND", (0, row_idx), (-1, row_idx),
+                                         WHITE if non_sub_toggle % 2 == 0 else LIGHT_GREY))
+                    non_sub_toggle += 1
             display_label = label_map.get(row["label"], row["label"])
             data.append(
                 [Paragraph(display_label, lbl_s)] +
-                [Paragraph(fmt(row.get(k)), S["table_cell_center"]) for k in col_keys]
+                [Paragraph(fmt(row.get(k)), val_s) for k in col_keys]
             )
         total_idx = len(data) - 1
         label_w = content_w * 0.30
         data_w  = (content_w - label_w) / (n_cols - 1)
         col_widths = [label_w] + [data_w] * (n_cols - 1)
         t = Table(data, colWidths=col_widths)
+        sub_bg_cmds = [("BACKGROUND", (0, i), (-1, i), LIGHT_GREY) for i in sub_row_idxs]
         t.setStyle(TableStyle([
             ("BACKGROUND",    (0, 0), (-1, 0),       DARK_BLUE),
-            ("ROWBACKGROUNDS",(0, 1), (-1, total_idx - 1), [WHITE, LIGHT_GREY]),
+            *row_bg_cmds,
+            *sub_bg_cmds,
             ("BACKGROUND",    (0, total_idx), (-1, total_idx), LIGHT_GREY),
             ("FONTNAME",      (0, total_idx), (-1, total_idx), "Helvetica-Bold"),
             ("BOX",           (0, 0), (-1, -1), 0.5, MID_GREY),

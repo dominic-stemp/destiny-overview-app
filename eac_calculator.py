@@ -20,6 +20,36 @@ TIC_MAP: dict[str, float] = {
     "Destiny Passive Defensive Portfolio":        0.23,
 }
 
+# Fixed/base vs variable (performance fee) breakdown of each portfolio's TIC.
+# TIC_MAP above = TIC_BASE_MAP + TIC_VARIABLE_MAP, rounded to 2 decimals.
+TIC_BASE_MAP: dict[str, float] = {
+    "Destiny Market Enhanced Portfolio":          0.47,
+    "Destiny Moderate Portfolio":                 0.45,
+    "Destiny Conservative Portfolio":             0.43,
+    "Destiny Defensive Portfolio":                0.39,
+    "Destiny Global Enhanced Portfolio":          0.58,
+    "Destiny Sharia Portfolio":                   1.09,
+    "Destiny Money Market Portfolio":             0.23,
+    "Destiny Passive Market Enhanced Portfolio":  0.23,
+    "Destiny Passive Moderate Portfolio":         0.22,
+    "Destiny Passive Conservative Portfolio":     0.21,
+    "Destiny Passive Defensive Portfolio":        0.21,
+}
+
+TIC_VARIABLE_MAP: dict[str, float] = {
+    "Destiny Market Enhanced Portfolio":          0.667,
+    "Destiny Moderate Portfolio":                 0.598,
+    "Destiny Conservative Portfolio":             0.515,
+    "Destiny Defensive Portfolio":                0.395,
+    "Destiny Global Enhanced Portfolio":          0.657,
+    "Destiny Sharia Portfolio":                   0.000,
+    "Destiny Money Market Portfolio":             0.002,
+    "Destiny Passive Market Enhanced Portfolio":  0.047,
+    "Destiny Passive Moderate Portfolio":         0.042,
+    "Destiny Passive Conservative Portfolio":     0.041,
+    "Destiny Passive Defensive Portfolio":        0.021,
+}
+
 GROWTH_RATE_PA = 0.06
 
 
@@ -93,6 +123,8 @@ def compute_eac_table(
     vat_rate: float = 15.0,
     admin_base_ex_vat: float = 0.75,
     tic_map: dict | None = None,
+    tic_base_map: dict | None = None,
+    tic_variable_map: dict | None = None,
     include_upfront_in_eac: bool = False,
     upfront_fee_incl_vat: float = 0.0,        # Option 1: goes into Advice row
     cancellation_fee_incl_vat: float = 0.0,   # Option 2: goes into Other row
@@ -101,14 +133,22 @@ def compute_eac_table(
 ) -> dict:
     if tic_map is None:
         tic_map = TIC_MAP
+    if tic_base_map is None:
+        tic_base_map = TIC_BASE_MAP
+    if tic_variable_map is None:
+        tic_variable_map = TIC_VARIABLE_MAP
 
     vat_mult = 1 + vat_rate / 100.0
 
-    # 1. IMC
+    # 1. IMC (and its fixed/base vs variable/performance-fee breakdown)
     if investment_option == "Own Choice" and choice_allocations:
-        imc_pct = _weighted_tic(choice_allocations, tic_map)
+        imc_pct          = _weighted_tic(choice_allocations, tic_map)
+        imc_base_pct      = _weighted_tic(choice_allocations, tic_base_map)
+        imc_variable_pct  = _weighted_tic(choice_allocations, tic_variable_map)
     else:
-        imc_pct = tic_map.get(selected_portfolio or "", 0.0)
+        imc_pct          = tic_map.get(selected_portfolio or "", 0.0)
+        imc_base_pct      = tic_base_map.get(selected_portfolio or "", 0.0)
+        imc_variable_pct  = tic_variable_map.get(selected_portfolio or "", 0.0)
 
     # 2. Advice (incl VAT) — flat ongoing fee only
     advice_pct = ifa_fee_ex_vat * vat_mult
@@ -146,15 +186,18 @@ def compute_eac_table(
     combined_flat_pct = imc_pct + advice_pct + admin_pct
 
     # 8. Build per-column values
-    imc_vals, advice_vals, admin_vals, other_vals = [], [], [], []
+    imc_vals, imc_base_vals, imc_variable_vals, advice_vals, admin_vals, other_vals = [], [], [], [], [], []
 
     for label, n in numeric_periods:
         if n is None:
-            imc_vals.append(None); advice_vals.append(None)
+            imc_vals.append(None); imc_base_vals.append(None); imc_variable_vals.append(None)
+            advice_vals.append(None)
             admin_vals.append(None); other_vals.append(None)
             continue
 
         imc_vals.append(round(imc_pct + 1e-12, 2))
+        imc_base_vals.append(round(imc_base_pct + 1e-12, 4))
+        imc_variable_vals.append(round(imc_variable_pct + 1e-12, 4))
 
         # Advice = base + upfront RIY (upfront fee goes into advice row)
         if use_riy_upfront:
@@ -201,7 +244,9 @@ def compute_eac_table(
         return [_fmt(v) for v in vals]
 
     rows = [
-        {"name": "Investment Management", "values": fmt_list(imc_vals),    "is_total": False},
+        {"name": "Investment Management", "values": fmt_list(imc_vals),          "is_total": False},
+        {"name": "Fixed / base costs",     "values": fmt_list(imc_base_vals),     "is_total": False, "is_sub": True},
+        {"name": "Variable costs",         "values": fmt_list(imc_variable_vals), "is_total": False, "is_sub": True},
         {"name": "Advice",                "values": fmt_list(advice_vals), "is_total": False},
         {"name": "Admin",                 "values": fmt_list(admin_vals),  "is_total": False},
         {"name": "Other",                 "values": fmt_list(other_vals),  "is_total": False},
@@ -212,7 +257,8 @@ def compute_eac_table(
         "columns": all_columns,
         "rows": rows,
         "_raw": {
-            "imc": imc_vals, "advice": advice_vals,
+            "imc": imc_vals, "imc_base": imc_base_vals, "imc_variable": imc_variable_vals,
+            "advice": advice_vals,
             "admin": admin_vals, "other": other_vals, "total": total_vals,
         },
         "_upfront_in_eac": include_upfront_in_eac,
@@ -231,14 +277,18 @@ def eac_table_to_rows(eac: dict, fund_type: str) -> list[dict]:
         "1 year": "y1", "3 years": "y3", "5 years": "y5",
         "< 5 years": "y5pre", "Age 65": "y65",
     }
-    component_order = ["imc", "advice", "admin", "other", "total"]
+    component_order = ["imc", "imc_base", "imc_variable", "advice", "admin", "other", "total"]
     label_map = {
-        "imc": "Investment Management", "advice": "Advice", "admin": "Admin",
+        "imc": "Investment Management",
+        "imc_base": "Fixed / base costs",
+        "imc_variable": "Variable costs",
+        "advice": "Advice", "admin": "Admin",
         "other": "Other", "total": "Effective Annual Cost",
     }
+    sub_rows = {"imc_base", "imc_variable"}
     result = []
     for comp in component_order:
-        row = {"label": label_map[comp], "is_total": comp == "total"}
+        row = {"label": label_map[comp], "is_total": comp == "total", "is_sub": comp in sub_rows}
         for i, col_label in enumerate(cols):
             key = col_key_map.get(col_label)
             if key:
