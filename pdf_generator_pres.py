@@ -455,24 +455,15 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
         }
         header = [Paragraph("", S["table_header"])] + [Paragraph(l, S["table_header"]) for l in col_labels]
         data = [header]
-        sub_row_idxs = []
-        non_sub_toggle = 0
-        row_bg_cmds = []
         for row in rows:
             is_total = row.get("is_total", False)
             is_sub   = row.get("is_sub", False)
-            row_idx  = len(data)
             if is_sub:
                 lbl_s  = S["table_sub_label"]
                 val_s  = S["table_sub_cell_center"]
-                sub_row_idxs.append(row_idx)
             else:
                 lbl_s = S["table_label"] if is_total else S["table_cell"]
                 val_s = S["table_cell_center"]
-                if not is_total:
-                    row_bg_cmds.append(("BACKGROUND", (0, row_idx), (-1, row_idx),
-                                         WHITE if non_sub_toggle % 2 == 0 else LIGHT_GREY))
-                    non_sub_toggle += 1
             display_label = label_map.get(row["label"], row["label"])
             data.append(
                 [Paragraph(display_label, lbl_s)] +
@@ -483,12 +474,9 @@ def generate_pres_pdf(field_values: dict, alloc_df=None, investor_age: float = 0
         data_w  = (content_w - label_w) / (n_cols - 1)
         col_widths = [label_w] + [data_w] * (n_cols - 1)
         t = Table(data, colWidths=col_widths)
-        sub_bg_cmds = [("BACKGROUND", (0, i), (-1, i), LIGHT_GREY) for i in sub_row_idxs]
         t.setStyle(TableStyle([
             ("BACKGROUND",    (0, 0), (-1, 0),       DARK_BLUE),
-            *row_bg_cmds,
-            *sub_bg_cmds,
-            ("BACKGROUND",    (0, total_idx), (-1, total_idx), LIGHT_GREY),
+            ("BACKGROUND",    (0, 1), (-1, -1),      WHITE),
             ("FONTNAME",      (0, total_idx), (-1, total_idx), "Helvetica-Bold"),
             ("BOX",           (0, 0), (-1, -1), 0.5, MID_GREY),
             ("INNERGRID",     (0, 0), (-1, -1), 0.5, MID_GREY),

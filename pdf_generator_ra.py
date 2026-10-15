@@ -367,24 +367,15 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
         "Other":                 "4. Other",
         "Effective Annual Cost": "Effective Annual Cost",
     }
-    sub_row_idxs = []
-    non_sub_toggle = 0
-    row_bg_cmds = []
     for row in eac_rows:
         is_total = row.get("is_total", False)
         is_sub   = row.get("is_sub", False)
-        row_idx  = len(eac_data)
         if is_sub:
             lbl_s = S["table_sub_label"]
             val_s = S["table_sub_cell_center"]
-            sub_row_idxs.append(row_idx)
         else:
             lbl_s = S["table_label"] if is_total else S["table_cell"]
             val_s = S["table_cell_center"]
-            if not is_total:
-                row_bg_cmds.append(("BACKGROUND", (0, row_idx), (-1, row_idx),
-                                     WHITE if non_sub_toggle % 2 == 0 else LIGHT_GREY))
-                non_sub_toggle += 1
         display_label = label_map.get(row["label"], row["label"])
         eac_data.append([
             Paragraph(display_label,      lbl_s),
@@ -399,12 +390,9 @@ def generate_ra_pdf(field_values: dict, alloc_df=None) -> bytes:
         eac_data,
         colWidths=[col_w * 1.6, col_w * 0.8, col_w * 0.8, col_w * 0.8]
     )
-    sub_bg_cmds = [("BACKGROUND", (0, i), (-1, i), LIGHT_GREY) for i in sub_row_idxs]
     eac_table.setStyle(TableStyle([
         ("BACKGROUND",    (0, 0), (-1, 0),  DARK_BLUE),
-        *row_bg_cmds,
-        *sub_bg_cmds,
-        ("BACKGROUND",    (0, total_row_idx), (-1, total_row_idx), LIGHT_GREY),
+        ("BACKGROUND",    (0, 1), (-1, -1), WHITE),
         ("FONTNAME",      (0, total_row_idx), (-1, total_row_idx), "Helvetica-Bold"),
         ("BOX",           (0, 0), (-1, -1), 0.5, MID_GREY),
         ("INNERGRID",     (0, 0), (-1, -1), 0.5, MID_GREY),
