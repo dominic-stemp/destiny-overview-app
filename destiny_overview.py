@@ -194,19 +194,35 @@ if fund == "Preservation":
 else:
     pres_fee_option = 3  # RA: no fee options
 
-def _parse_rand(raw: str) -> int:
-    """Strip R, spaces, commas and return int. Returns 0 for empty/invalid."""
-    cleaned = raw.replace("R", "").replace(",", "").replace(" ", "").strip()
+def _parse_rand(raw: str) -> float:
+    """Parse a Rand amount (cents allowed) and return it rounded to 2 decimals.
+
+    Accepts "R1,234.56", "1234.56", "1 234,56" and "1234,5". A "." is always the
+    decimal point. With no ".", a comma followed by only 1-2 digits at the end is
+    treated as the decimal point (e.g. "150000,75"); other commas are thousands
+    separators. Returns 0 for empty/invalid input.
+    """
+    cleaned = raw.upper().replace("R", "").replace(" ", "").replace(" ", "").strip()
+    if not cleaned:
+        return 0.0
+    if "." not in cleaned and "," in cleaned:
+        whole, _, tail = cleaned.rpartition(",")
+        if 1 <= len(tail) <= 2 and tail.isdigit():
+            cleaned = f"{whole}.{tail}"
+    cleaned = cleaned.replace(",", "")
     try:
-        return max(0, int(float(cleaned))) if cleaned else 0
+        return max(0.0, round(float(cleaned), 2))
     except ValueError:
-        return 0
+        return 0.0
 
-def _fmt_rand(n: int) -> str:
-    return f"R{n:,}" if n else ""
+def _fmt_rand(n: float) -> str:
+    """R1,234 for whole amounts, R1,234.50 when there are cents."""
+    if not n:
+        return ""
+    return f"R{n:,.0f}" if float(n).is_integer() else f"R{n:,.2f}"
 
-def _rand_input(label: str, key: str, placeholder: str) -> int:
-    """Text input that reformats itself to R1,000,000 after each keystroke."""
+def _rand_input(label: str, key: str, placeholder: str) -> float:
+    """Text input that reformats itself to R1,000,000 / R1,000,000.50 on entry."""
     raw = st.session_state.get(key, "")
     n   = _parse_rand(raw)
     # If user has typed something and the stored value isn't already formatted,
@@ -257,11 +273,11 @@ if fund == "Preservation":
         st.markdown("<div class='section-heading'>Option 1 – Upfront Fee</div>", unsafe_allow_html=True)
         if investor_age >= 55:
             st.info("No upfront fee applies — investor is aged 55 or older.")
-            st.write(f"**Net Amount Invested:** R {int(net_lump_sum):,}")
+            st.write(f"**Net Amount Invested:** R {net_lump_sum:,.2f}")
         else:
             st.write(f"**Upfront Rate:** {upfront_rate_display:.3f}%")
             st.write(f"**Upfront Fee (Incl VAT):** R {upfront_fee_vat:,.2f}")
-            st.write(f"**Net Amount Invested:** R {int(net_lump_sum):,}")
+            st.write(f"**Net Amount Invested:** R {net_lump_sum:,.2f}")
     elif pres_fee_option == 2:
         st.markdown("<div class='section-heading'>Option 2 – Cancellation Fee</div>", unsafe_allow_html=True)
         if investor_age >= 55:
@@ -277,11 +293,11 @@ if fund == "Preservation":
                 "Cancellation Fee": ["2.75% plus VAT", "1.75% plus VAT", "0.75% plus VAT", "0%"],
             }
             st.table(pd.DataFrame(opt2_data))
-        st.write(f"**Net Amount Invested:** R {estimated_lump_sum:,}")
+        st.write(f"**Net Amount Invested:** R {estimated_lump_sum:,.2f}")
     elif pres_fee_option == 3:
         st.markdown("<div class='section-heading'>Option 3 – Section 14 (No Fees)</div>", unsafe_allow_html=True)
         st.write("No upfront or cancellation fees apply.")
-        st.write(f"**Net Amount Invested:** R {estimated_lump_sum:,}")
+        st.write(f"**Net Amount Invested:** R {estimated_lump_sum:,.2f}")
 
 # ----------------------------------------------------
 # LIFESTAGE / OWN CHOICE PORTFOLIO
@@ -459,8 +475,8 @@ if st.button("Generate Investment Report (PDF)"):
             "InvestorAge":         f"{investor_age_display} years",
             "InvestorEmail":       investor_email,
             "QuotationDate":       today.strftime("%d %B %Y"),
-            "InitialLumpSum":      f"R {estimated_lump_sum:,}",
-            "MonthlyContribution": f"R {monthly_contribution:,}",
+            "InitialLumpSum":      f"R {estimated_lump_sum:,.2f}",
+            "MonthlyContribution": f"R {monthly_contribution:,.2f}",
             "InvestmentOption":    investment_option,
             "LifestagePortfolio":  ls_name or "",
             "LifestageTIC":        f"{ls_tic:.2f}%" if ls_tic else "",
@@ -488,10 +504,10 @@ if st.button("Generate Investment Report (PDF)"):
             "InvestorAge":        f"{investor_age_display} years",
             "InvestorEmail":      investor_email,
             "QuotationDate":      today.strftime("%d %B %Y"),
-            "InitialLumpSum":     f"R {estimated_lump_sum:,}",
+            "InitialLumpSum":     f"R {estimated_lump_sum:,.2f}",
             "InitialFeeNoVAT":    f"R {pres_fee_no_vat:,.2f}",
             "InitialFeeVATAmt":   f"R {pres_vat_amt:,.2f}",
-            "NetLumpSum":         f"R {int(net_lump_sum):,}",
+            "NetLumpSum":         f"R {net_lump_sum:,.2f}",
             "InvestmentOption":   investment_option,
             "LifestagePortfolio": ls_name or "",
             "LifestageTIC":       f"{ls_tic:.2f}%" if ls_tic else "",
